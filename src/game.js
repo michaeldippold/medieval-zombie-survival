@@ -61,7 +61,7 @@ export function createGame({ canvas, menuEl, paletteEl, inventoryEl, status }) {
 
   function update(dt) {
     const a = input.actions;
-    if (a.restart) restart();
+    if (a.restart && (state.paused || state.player.dead)) restart();   // R only from the pause menu or the death screen
     if (a.closeMenu) menu.close();
     if (palette.consumeJustClosed()) a.use = false;         // the click that dismissed a palette isn't a swing
     if (a.inventory) { if (invPanel.isOpen) invPanel.close(); else { palette.close(); invPanel.open(state.inventory); } }
