@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medieval Zombie Survival</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Medieval <span>Zombie</span> Survival</h1>
+    <div class="status"><b id="vis">exposed</b> · slain <b id="hit">0</b> / <b id="total">0</b> · click the canvas to focus</div>
+  </header>
+  <div class="stage">
+    <canvas id="g" width="960" height="560" tabindex="0"></canvas>
+    <div class="menu" id="menu" hidden></div>
+  </div>
+  <div class="legend">
+    <div><kbd>A</kbd><kbd>D</kbd> move</div>
+    <div><kbd>Space</kbd> jump</div>
+    <div><kbd>W</kbd><kbd>S</kbd> ladder (let go and you slide)</div>
+    <div><kbd>1</kbd> sword <kbd>2</kbd> bow</div>
+    <div><kbd>Left click</kbd> use</div>
+    <div><kbd>Right click</kbd> door / shutter / trapdoor</div>
+    <div><kbd>R</kbd> restart</div>
+  </div>
+  <p class="note">A timber house with shutters, a barred door and a trapdoor to the loft. Shutters are open (see-through, climbable) or closed (opaque, breakable) or barred. Doors and shutters can only be barred from inside; the trapdoor only from above. Zombies take three sword hits, climb ladders, and every hit they land on you carries a chance of infection you will not be told about. Anything that sees you calls the others.</p>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
