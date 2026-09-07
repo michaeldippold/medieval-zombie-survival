@@ -4,14 +4,14 @@ import { VIEW } from './config.js';
 
 export function createInput(canvas) {
   const keys = new Set();
-  const actions = { jump: false, jumpReleased: false, use: false, slot: null, restart: false, menuAt: null, closeMenu: false };
+  const actions = { jump: false, jumpReleased: false, use: false, slot: null, restart: false, menuAt: null, closeMenu: false, escape: false };
   const mouse = { sx: VIEW.W / 2, sy: VIEW.H / 2, wx: 0, wy: 0 };
 
   const isJumpKey = code => code === 'Space';
   window.addEventListener('keydown', e => {
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-    if (e.code === 'Escape') actions.closeMenu = true;
     if (!keys.has(e.code)) {
+      if (e.code === 'Escape') actions.escape = true;
       if (isJumpKey(e.code)) actions.jump = true;
       if (/^(Digit|Numpad)[1-9]$/.test(e.code)) actions.slot = Number(e.code.slice(-1));
       if (e.code === 'KeyJ') actions.use = true;
@@ -41,7 +41,7 @@ export function createInput(canvas) {
 
   const held = (...codes) => codes.some(c => keys.has(c));
   const axis = () => ((held('KeyD', 'ArrowRight') ? 1 : 0) - (held('KeyA', 'ArrowLeft') ? 1 : 0));
-  const endFrame = () => { actions.jump = false; actions.jumpReleased = false; actions.use = false; actions.slot = null; actions.restart = false; actions.menuAt = null; actions.closeMenu = false; };
+  const endFrame = () => { for (const k of Object.keys(actions)) actions[k] = typeof actions[k] === 'boolean' ? false : null; };
 
   return { keys, actions, mouse, held, axis, endFrame };
 }

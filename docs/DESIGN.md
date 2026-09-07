@@ -121,20 +121,29 @@ Drawn back to front:
 
 ### 5.3 Tile catalogue
 
-| kind | solid | opaque | hp | notes |
-|---|---|---|---|---|
-| `air` | no | no | — | may carry a `back` |
-| `dirt` | yes | yes | 3 hits | diggable, drops dirt |
-| `grass` | yes | yes | 3 hits | dirt with a cap; drops dirt |
-| `stone` | yes | yes | 8 hits | needs a pick; drops stone |
-| `bedrock` | yes | yes | ∞ | bottom row, indestructible |
-| `wall` (timber) | yes | yes | 300 | zombie-breakable, slowly |
-| `wall_stone` | yes | yes | 900 | tier 2 |
-| `floor` (planks) | yes | yes | 120 | horizontal; zombie-breakable |
-| `ladder` | no | no | 40 | climbable; placeable |
-| `door` | state | state | 150 | portal, bars from inside |
-| `shutter` | state | state | 60 | portal, bars from inside, climb-through when open |
-| `hatch` | state | state | 120 | portal in a floor, bars from above, climbable when open |
+Two numbers per tile: **hp** is what zombies chew through (∞ = they can't); **harvest** is what
+the player's tool does (`tool`, `hits`, `drop`, and `perHit` for ore-like yield).
+
+| kind | solid | opaque | hp | harvest | notes |
+|---|---|---|---|---|---|
+| `air` | no | no | — | — | may carry a `back` |
+| `dirt` | yes | yes | ∞ | shovel ×2 → dirt | |
+| `grass` | yes | yes | ∞ | shovel ×2 → dirt | dirt with a cap |
+| `stone` | yes | yes | ∞ | pick ×6 → stone **per hit** | mounds on the surface, a layer below |
+| `bedrock` | yes | yes | ∞ | — | bottom row |
+| `trunk` | **no** | **no** | ∞ | axe ×1 → wood | trees don't block; no tree physics |
+| `leaf` | **no** | **no** | ∞ | anything ×1 → nothing | |
+| `wall` (timber) | yes | yes | 300 | axe ×4 → wood | placeable, 1 wood |
+| `wall_stone` | yes | yes | 900 | pick ×6 → stone | placeable, 1 stone |
+| `floor` (planks) | yes | yes | 120 | axe ×2 → wood | placeable, 1 wood |
+| `ladder` | no | no | 40 | axe ×1 → wood | climbable; placeable, 1 wood |
+| `door` | state | state | 150 | axe ×3 → wood | portal, bars from inside; 2 wood |
+| `shutter` | state | state | 60 | axe ×2 → wood | portal, climb-through when open; 1 wood |
+| `hatch` | state | state | 120 | axe ×3 → wood | portal in a floor, bars from above; 2 wood |
+
+Collision decisions: trees and leaves never block movement or sight (a tree you can't walk
+past is not fun; a forest you can't see through is a different game). Stone does both — a
+stone mountain is a thing worth building.
 
 Future: `chest`, `workbench`, `bed`, `well`, `torch` (decorative until lighting exists),
 `fence` (solid, not opaque — the first split), `spikes`.
@@ -157,14 +166,20 @@ opaque = solid
 - **Climb through** an open or broken shutter: the player is placed into the tile and walks
   out the far side. Zombies do the same automatically.
 
-### 5.5 Digging and placing
+### 5.5 Harvesting, digging and placing
 
-- The active tool determines what left-click does to a tile: shovel digs dirt/grass, pick
-  digs stone, hammer repairs, axe fells (future trees).
-- Digging is HP-based: each hit reduces `hp`; the existing crack overlay shows progress; at
-  zero the tile is removed, its `back` becomes dark earth, and its drop is added to inventory.
-- Placing: right-click with a block selected places it in an air tile in reach that overlaps
-  no body. Placed tiles are ordinary tiles.
+- **Left click uses what you hold.** Tools (shovel / axe / pickaxe) act on the tile under
+  the cursor if it is in reach. Each swing advances the tile's `dig` counter; the crack
+  overlay shows progress; at `hits` the tile is removed. The wrong tool does nothing and says
+  so ("needs a pickaxe").
+- Removed tiles **drop items** into the world — small squares that fall, settle, and are
+  picked up by walking over them. Stone yields every hit; everything else on removal.
+- What's left behind: earth tiles become air with a dark-earth `back`; structure tiles keep
+  whatever `back` they had (plaster inside, sky outside).
+- **Right click on an empty tile builds.** The menu lists every placeable with its cost and
+  the reason you can't (not enough wood, blocked, too far). Doors and shutters take their
+  "inside" from the side the player stood on. Placed tiles inherit the air tile's `back`.
+- **Dismantling** is harvesting a built tile with the matching tool; it refunds the material.
 - **Reach**: 110 px from the player's centre to the tile's centre, for everything.
 - Bedrock cannot be dug. The world edges are invisible solid walls.
 - **Tunnels are one tile tall.** The player is 36 px in a 40 px tile. This is a deliberate
@@ -209,8 +224,9 @@ See §6. Facing follows the mouse. The held item is drawn pointed at the mouse.
   rare or pillar 4 collapses.
 
 ### 7.3 Inventory and hotbar
-- Hotbar: numbered slots, keys 1–9. Left click = use the selected slot's item on the world
-  or on enemies. Right click = context menu for the tile under the cursor (never an attack).
+- Hotbar: `1` sword · `2` bow · `3` shovel · `4` axe · `5` pickaxe. Left click = use the
+  selected item on the world or on enemies. Right click = context menu for the tile under
+  the cursor: interact with portals, build into air, craft (never an attack).
 - Inventory: a DOM panel (key `I`/`Tab`), stack counts, drag to hotbar. Not built yet.
 - Items are `{ id, count }`; item definitions in `items.js` hold: tool type, damage, timing,
   what tile it places, stack limit.
@@ -315,8 +331,9 @@ colour and strength will follow the sky.
   position each frame and always lands. A miss flies to the impact point and sticks for
   0.5 s. Delay = distance / 1100 px/s.
 - Damage 2. Cooldown 0.6 s.
-- **Ammo** (not built): arrows are finite, dropped on the ground where they land, and
-  recoverable from corpses. This is what fixes the bow being the best weapon.
+- **Ammo**: arrows are an inventory item. 10 to start. A miss drops the arrow where it
+  stuck; a hit returns it 60% of the time at the target. 1 wood fletches 4 (right-click
+  menu). This is what stops the bow being the best weapon.
 
 ### 10.3 Damage model
 Zombie HP is small integers (3). Sword 1, arrow 2, future crossbow 3, spear 1 with reach.

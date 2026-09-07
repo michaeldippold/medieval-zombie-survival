@@ -1,16 +1,31 @@
 // Entity and item painters. Flat colours now; sprites later swap these functions only.
-import { COLORS, ZOMBIE, SWORD, BOW } from '../config.js';
+import { COLORS, ZOMBIE, SWORD, BOW, DROPS } from '../config.js';
 
-// Draws a weapon at the origin pointing +x.
+// Draws a held item at the origin pointing +x.
 export function drawWeapon(ctx, kind) {
   ctx.lineCap = 'round';
-  if (kind === 'sword') {
-    ctx.strokeStyle = COLORS.frame; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(10, 0); ctx.stroke();
-    ctx.strokeStyle = '#d8b04a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(10, -6); ctx.lineTo(10, 6); ctx.stroke();
-    ctx.strokeStyle = '#e6eaee'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(36, 0); ctx.stroke();
-  } else {
-    ctx.strokeStyle = COLORS.frame; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(14, 0, 15, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-    ctx.strokeStyle = COLORS.arrowFletch; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(14, -15); ctx.lineTo(14, 15); ctx.stroke();
+  switch (kind) {
+    case 'sword':
+      ctx.strokeStyle = COLORS.frame; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(10, 0); ctx.stroke();
+      ctx.strokeStyle = '#d8b04a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(10, -6); ctx.lineTo(10, 6); ctx.stroke();
+      ctx.strokeStyle = '#e6eaee'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(36, 0); ctx.stroke();
+      break;
+    case 'bow':
+      ctx.strokeStyle = COLORS.frame; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(14, 0, 15, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+      ctx.strokeStyle = COLORS.arrowFletch; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(14, -15); ctx.lineTo(14, 15); ctx.stroke();
+      break;
+    case 'shovel':
+      ctx.strokeStyle = COLORS.frame; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(26, 0); ctx.stroke();
+      ctx.fillStyle = COLORS.metal; ctx.beginPath(); ctx.moveTo(24, -6); ctx.lineTo(36, -4); ctx.lineTo(36, 4); ctx.lineTo(24, 6); ctx.closePath(); ctx.fill();
+      break;
+    case 'axe':
+      ctx.strokeStyle = COLORS.frame; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(30, 0); ctx.stroke();
+      ctx.fillStyle = COLORS.metal; ctx.beginPath(); ctx.moveTo(22, -2); ctx.lineTo(30, -10); ctx.lineTo(34, -8); ctx.lineTo(34, 2); ctx.lineTo(22, 3); ctx.closePath(); ctx.fill();
+      break;
+    case 'pick':
+      ctx.strokeStyle = COLORS.frame; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(28, 0); ctx.stroke();
+      ctx.strokeStyle = COLORS.metal; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(26, -10); ctx.quadraticCurveTo(34, 0, 26, 10); ctx.stroke();
+      break;
   }
 }
 
@@ -65,4 +80,12 @@ export function drawArrow(ctx, a) {
   ctx.fillStyle = COLORS.arrowHead; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(-6, -3.5); ctx.lineTo(-6, 3.5); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = COLORS.arrowFletch; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(-26, -3); ctx.moveTo(-22, 0); ctx.lineTo(-26, 3); ctx.stroke();
   ctx.restore();
+}
+
+export function drawDrop(ctx, d) {
+  const bob = Math.sin(d.age * 4) * 1.5;
+  ctx.fillStyle = COLORS.items[d.id] || '#fff';
+  ctx.fillRect(d.x, d.y + bob, d.w, d.h);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(d.x + 0.5, d.y + bob + 0.5, d.w - 1, d.h - 1);
+  if (d.id === 'arrow') { ctx.strokeStyle = COLORS.arrowShaft; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.x + 2, d.y + bob + DROPS.SIZE - 2); ctx.lineTo(d.x + DROPS.SIZE - 2, d.y + bob + 2); ctx.stroke(); }
 }

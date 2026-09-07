@@ -1,12 +1,12 @@
 // Tile painters. One function per kind, plus shared decorations (bars, cracks, splinters).
 import { TILE as T, COLORS, PORTAL } from '../config.js';
-import { maxHp } from '../world/tiles.js';
+import { integrity } from '../world/tiles.js';
 
 export function paintTile(ctx, c, r, t) {
   const x = c * T, y = r * T;
   if (t.back) paintBack(ctx, x, y, t.back, c);
   const fn = PAINTERS[t.kind];
-  if (fn) fn(ctx, x, y, t);
+  if (fn) fn(ctx, x, y, t, c, r);
 }
 
 function paintBack(ctx, x, y, back, c) {
@@ -16,23 +16,42 @@ function paintBack(ctx, x, y, back, c) {
 
 const PAINTERS = {
   air() {},
-  grass(ctx, x, y) {
+  grass(ctx, x, y, t) {
     ctx.fillStyle = COLORS.dirt; ctx.fillRect(x, y, T, T);
     ctx.fillStyle = COLORS.grass; ctx.fillRect(x, y, T, 8);
     ctx.fillStyle = COLORS.grassShade; ctx.fillRect(x, y + 8, T, 2);
+    paintCracks(ctx, x, y, integrity(t));
   },
-  dirt(ctx, x, y) { ctx.fillStyle = COLORS.dirt; ctx.fillRect(x, y, T, T); },
-  stone(ctx, x, y) { ctx.fillStyle = COLORS.stone; ctx.fillRect(x, y, T, T); ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, T - 2, T - 2); },
+  dirt(ctx, x, y, t) { ctx.fillStyle = COLORS.dirt; ctx.fillRect(x, y, T, T); paintCracks(ctx, x, y, integrity(t)); },
+  stone(ctx, x, y, t) {
+    ctx.fillStyle = COLORS.stone; ctx.fillRect(x, y, T, T);
+    ctx.strokeStyle = COLORS.stoneEdge; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, T - 2, T - 2);
+    paintCracks(ctx, x, y, integrity(t));
+  },
   bedrock(ctx, x, y) { ctx.fillStyle = COLORS.bedrock; ctx.fillRect(x, y, T, T); },
+  trunk(ctx, x, y) {
+    ctx.fillStyle = COLORS.trunk; ctx.fillRect(x + 10, y, 20, T);
+    ctx.fillStyle = COLORS.trunkShade; ctx.fillRect(x + 10, y, 4, T); ctx.fillRect(x + 20, y + 8, 3, 14);
+  },
+  leaf(ctx, x, y, t, c, r) {
+    ctx.fillStyle = COLORS.leaf; ctx.fillRect(x, y, T, T);
+    ctx.fillStyle = COLORS.leafShade; ctx.fillRect(x + ((c * 7 + r * 3) % 20), y + ((c * 5 + r * 11) % 22), 10, 8);
+  },
   wall(ctx, x, y, t) {
     ctx.fillStyle = COLORS.wall; ctx.fillRect(x, y, T, T);
     ctx.strokeStyle = COLORS.wallEdge; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, T - 2, T - 2);
-    paintCracks(ctx, x, y, t.hp / maxHp(t));
+    paintCracks(ctx, x, y, integrity(t));
+  },
+  wall_stone(ctx, x, y, t) {
+    ctx.fillStyle = COLORS.wallStone; ctx.fillRect(x, y, T, T);
+    ctx.strokeStyle = COLORS.wallStoneEdge; ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, T - 2, T / 2 - 1); ctx.strokeRect(x + 1, y + T / 2, T / 2, T / 2 - 1); ctx.strokeRect(x + T / 2, y + T / 2, T / 2 - 1, T / 2 - 1);
+    paintCracks(ctx, x, y, integrity(t));
   },
   floor(ctx, x, y, t) {
     ctx.fillStyle = COLORS.wood; ctx.fillRect(x, y, T, T);
     ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x, y + 18, T, 3);
-    paintCracks(ctx, x, y, t.hp / maxHp(t));
+    paintCracks(ctx, x, y, integrity(t));
   },
   ladder(ctx, x, y) { paintLadder(ctx, x, y); },
   door(ctx, x, y, t) {
@@ -43,7 +62,7 @@ const PAINTERS = {
       ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 3, y, T - 6, T);
       ctx.fillStyle = COLORS.frame; ctx.fillRect(x + 3, y + 12, T - 6, 3); ctx.fillRect(x + 3, y + 26, T - 6, 3);
       ctx.fillStyle = '#3a3f41'; ctx.fillRect(x + T - 12, y + T / 2 - 2, 4, 4);
-      paintCracks(ctx, x, y, t.hp / maxHp(t));
+      paintCracks(ctx, x, y, integrity(t));
     }
     paintBars(ctx, x, y, t);
   },
@@ -57,7 +76,7 @@ const PAINTERS = {
       ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
       ctx.fillStyle = COLORS.frame; ctx.fillRect(x + T / 2 - 1, y + 4, 2, T - 8);
       ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x + 4, y + 14, T - 8, 2); ctx.fillRect(x + 4, y + 26, T - 8, 2);
-      paintCracks(ctx, x, y, t.hp / maxHp(t));
+      paintCracks(ctx, x, y, integrity(t));
     }
     paintBars(ctx, x, y, t);
   },
@@ -69,7 +88,7 @@ const PAINTERS = {
       ctx.fillStyle = COLORS.wood; ctx.fillRect(x - 2, y, T + 4, T);
       ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x - 2, y + 12, T + 4, 3); ctx.fillRect(x - 2, y + 26, T + 4, 3);
       ctx.fillStyle = '#3a3f41'; ctx.fillRect(x + T / 2 - 2, y + 18, 4, 4);
-      paintCracks(ctx, x, y, t.hp / maxHp(t));
+      paintCracks(ctx, x, y, integrity(t));
     }
     paintBars(ctx, x, y, t);
   },

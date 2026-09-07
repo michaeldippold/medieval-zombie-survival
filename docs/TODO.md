@@ -38,19 +38,27 @@ codebase that can *take* the later phases. Parity checklist:
 - [x] Restart (R) rebuilds everything from `maps.js`
 - [ ] Played once end to end in the modular build; behaviour matches the prototype *(runs clean; needs a human playtest)*
 
-## Phase 2 — Depth: digging and placing (DESIGN §5.5)
+## Phase 2 — Resources, building, depth (DESIGN §5.5, §11)
 
-- [ ] World 200×48: surface ~row 12, stone below ~row 30, bedrock row 47
-- [ ] Vertical camera actually scrolling; clouds/sky parallax fixed to camera
-- [ ] `air` tiles with `back` (backwall) — dark earth when dug, plaster inside structures
-- [ ] Items: `items.js` with tool/placeable definitions; inventory counts (no UI yet)
-- [ ] Hotbar slot 3 = shovel: left-click digs dirt/grass in reach (HP + cracks); drop to inventory
-- [ ] Hotbar slot 4 = placeable dirt; right-click places if in reach, air, and no body overlaps
-- [ ] Ladder placement (slot 5)
-- [ ] Bedrock indestructible; world edge walls
+The first full loop: get resources → build a house → don't die.
+
+- [x] World 120×40, seeded: surface row 24, dirt to 31, stone to 38, bedrock 39
+- [x] Vertical camera with upward bias; clouds parallax against the camera
+- [x] `air` tiles with `back` — dark earth when dug, plaster inside structures
+- [x] Trees: trunk 3–5 + leaf blob; **no collision, no sight blocking**. Axe fells a trunk tile in one hit → 1 wood. Leaves fall to anything, give nothing.
+- [x] Stone: solid; surface mounds and an underground layer. Pickaxe yields 1 stone **per hit**, tile gone after 6.
+- [x] Dirt/grass: shovel, 2 hits → 1 dirt
+- [x] Harvest model on every tile def (`tool`, `hits`, `drop`, `perHit`); progress shown as cracks
+- [x] Tools on the hotbar: 3 shovel, 4 axe, 5 pickaxe; left-click harvests the tile under the cursor in reach; wrong tool → hint
+- [x] Mined blocks become drops that fall and are picked up by walking over them
+- [x] Inventory counts (wood / stone / dirt / arrows) in the HUD
+- [x] Building on right-click of an empty tile, with costs: dirt 1, timber wall 1 wood, plank floor 1 wood, stone wall 1 stone, ladder 1 wood, door 2 wood, shutter 1 wood, trapdoor 2 wood. Doors/shutters take "inside" from the side you stand on.
+- [x] Dismantling: axe on walls/floors/doors/ladders, pickaxe on stone walls — refunds the material
+- [x] Arrows finite: 10 to start; misses drop where they land; 60% recovered off a hit; fletch 4 from 1 wood
+- [x] Bedrock indestructible; world edge walls
 - [ ] Zombies fall into pits and cannot climb out of 2+ deep holes (verify, tune)
-- [ ] Menu items for tiles you can dig/place (so right-click stays the discoverable path)
-- [ ] Played: dig a basement under the house, cap it with a hatch, confirm sealed
+- [ ] Zombies attack timber/stone walls when they're what's in the way (slowly) — otherwise a wall is a cheat
+- [ ] Played: fell trees, build a hut with a door, seal it, survive; dig a basement, cap it, confirm sealed
 
 ## Phase 3 — Needs and time (DESIGN §7.4, §12)
 
@@ -116,3 +124,6 @@ codebase that can *take* the later phases. Parity checklist:
 - 2026-09-07 — Hitscan ranged with presentation-only projectiles.
 - 2026-09-07 — Vanilla ES modules, no bundler, GitHub Pages.
 - 2026-09-07 — One-tile-tall tunnels; player stays 36 px tall.
+- 2026-09-07 — Trees have no collision and don't block sight; stone does both. "Building a stone mountain sounds fun; a tree that blocks you does not."
+- 2026-09-07 — Left click = use what you hold (weapon or tool). Right click = interact / build / craft menu. Never an attack.
+- 2026-09-07 — Stone yields per hit until the block is gone; trees are 1:1 per trunk tile.
