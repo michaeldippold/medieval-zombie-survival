@@ -59,7 +59,8 @@ The first full loop: get resources → build a house → don't die.
 - [x] Build palette (tile thumbnails, have/need, lit if affordable) → build mode with a ghost preview; click to stamp; Esc or hotbar key to leave; weapons/tools off while building
 - [x] Surface stone actually spawns (mounds were being excluded by tree spacing); underground stone veins; natural caves
 - [x] Underground base confirmed: dig in, cap with floor + trapdoor, sealed
-- [ ] Zombies fall into pits and cannot climb out of 2+ deep holes (verify, tune)
+- [x] Pits: zombies fall in and stack; a 2-deep 1-wide pit holds one before the next walks over it. Emergent from body collision — keep.
+- [ ] Scrambling: a chasing zombie blocked by a 2-tile obstacle climbs it slowly (~5 s, visible state); 3+ is impossible. `MAX_SCRAMBLE` in config. Makes pits a delay, low fences a bad wall, 3-high a real one.
 - [ ] Zombies attack timber/stone walls when they're what's in the way (slowly) — otherwise a wall is a cheat
 - [ ] Played: fell trees, build a hut with a door, seal it, survive; dig a basement, cap it, confirm sealed
 

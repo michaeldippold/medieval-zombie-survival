@@ -294,6 +294,14 @@ solid portal, and attacks it. Shutters (60) go in three hits; doors (150) in eig
 floors are attackable in the same way with much higher HP; this is what makes material tiers
 matter.
 
+### 8.4b Obstacles by height (planned)
+What a blocked, chasing zombie does depends on how tall the obstacle is:
+1 tile — steps up instantly. 2 tiles — **scrambles** over slowly (~5 s, a visible clawing
+state). 3+ — cannot; it attacks the tile if it's attackable, otherwise piles up. So a 2-deep
+pit is a delay, a 2-high fence is a bad wall, and 3-high is where fortification starts.
+Pits also fill: zombies are solid to each other and stack, so a pit holds `depth − 1` per
+column before the next one walks across. That is emergent and intended.
+
 ### 8.5 Collision rules
 - Zombies are solid to the player and to each other (they crowd, they block doors, you can
   stand on them).
