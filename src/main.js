@@ -3,7 +3,8 @@ import { createGame } from './game.js';
 const game = createGame({
   canvas: document.getElementById('g'),
   menuEl: document.getElementById('menu'),
-  buildEl: document.getElementById('build'),
+  paletteEl: document.getElementById('palette'),
+  inventoryEl: document.getElementById('inventory'),
   status: { vis: document.getElementById('vis'), hit: document.getElementById('hit'), total: document.getElementById('total') },
 });
 

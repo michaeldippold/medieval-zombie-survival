@@ -10,6 +10,7 @@ export const ITEMS = {
   dirt:   { name: 'Dirt',    kind: 'material' },
   wood:   { name: 'Wood',    kind: 'material' },
   stone:  { name: 'Stone',   kind: 'material' },
+  leaf:   { name: 'Leaves',  kind: 'material' },
   arrow:  { name: 'Arrows',  kind: 'material' },
 };
 
@@ -19,6 +20,7 @@ export const HOTBAR = ['sword', 'bow', 'shovel', 'axe', 'pick'];
 // side the player stood on when placing, which becomes "inside" for doors and shutters.
 export const BUILDS = [
   { id: 'dirt',       label: 'Dirt block',   cost: { dirt: 1 },  make: () => makeTile('dirt') },
+  { id: 'leaf',       label: 'Leaves',       cost: { leaf: 1 },  make: () => makeTile('leaf') },
   { id: 'wall',       label: 'Timber wall',  cost: { wood: 1 },  make: () => makeTile('wall') },
   { id: 'floor',      label: 'Plank floor',  cost: { wood: 1 },  make: () => makeTile('floor') },
   { id: 'wall_stone', label: 'Stone wall',   cost: { stone: 1 }, make: () => makeTile('wall_stone') },
@@ -28,6 +30,7 @@ export const BUILDS = [
   { id: 'hatch',      label: 'Trapdoor',     cost: { wood: 2 },  make: () => makeTile('hatch') },
 ];
 
+// Recipes: pay `cost`, receive `gives`. One click crafts one batch.
 export const CRAFTS = [
-  { id: 'arrows', label: 'Fletch 4 arrows', cost: { wood: 1 }, gives: { arrow: 4 } },
+  { id: 'arrows', label: 'Arrows ×4', cost: { wood: 1 }, gives: { arrow: 4 }, icon: 'arrow' },
 ];

@@ -4,14 +4,15 @@ import { VIEW } from './config.js';
 
 export function createInput(canvas) {
   const keys = new Set();
-  const actions = { jump: false, jumpReleased: false, use: false, slot: null, restart: false, menuAt: null, closeMenu: false, escape: false };
+  const actions = { jump: false, jumpReleased: false, use: false, slot: null, restart: false, menuAt: null, closeMenu: false, escape: false, inventory: false };
   const mouse = { sx: VIEW.W / 2, sy: VIEW.H / 2, wx: 0, wy: 0 };
 
   const isJumpKey = code => code === 'Space';
   window.addEventListener('keydown', e => {
-    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
     if (!keys.has(e.code)) {
       if (e.code === 'Escape') actions.escape = true;
+      if (e.code === 'KeyI' || e.code === 'Tab') actions.inventory = true;
       if (isJumpKey(e.code)) actions.jump = true;
       if (/^(Digit|Numpad)[1-9]$/.test(e.code)) actions.slot = Number(e.code.slice(-1));
       if (e.code === 'KeyJ') actions.use = true;

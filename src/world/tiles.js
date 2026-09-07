@@ -13,7 +13,7 @@ export const TILE_DEFS = {
   stone:      { solid: true,  opaque: true, hp: Infinity, harvest: { tool: 'pick', hits: 6, drop: 'stone', perHit: true } },
   bedrock:    { solid: true,  opaque: true, hp: Infinity },
   trunk:      { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'axe', hits: 1, drop: 'wood' } },
-  leaf:       { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'any', hits: 1 } },
+  leaf:       { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'any', hits: 1, drop: 'leaf' } },
   wall:       { solid: true,  opaque: true, hp: 300, harvest: { tool: 'axe', hits: 4, drop: 'wood' } },
   wall_stone: { solid: true,  opaque: true, hp: 900, harvest: { tool: 'pick', hits: 6, drop: 'stone' } },
   floor:      { solid: true,  opaque: true, hp: 120, harvest: { tool: 'axe', hits: 2, drop: 'wood' } },

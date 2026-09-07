@@ -132,7 +132,7 @@ the player's tool does (`tool`, `hits`, `drop`, and `perHit` for ore-like yield)
 | `stone` | yes | yes | ∞ | pick ×6 → stone **per hit** | mounds on the surface, a layer below |
 | `bedrock` | yes | yes | ∞ | — | bottom row |
 | `trunk` | **no** | **no** | ∞ | axe ×1 → wood | trees don't block; no tree physics |
-| `leaf` | **no** | **no** | ∞ | anything ×1 → nothing | |
+| `leaf` | **no** | **no** | ∞ | anything ×1 → leaves | placeable, 1 leaves — bushes, hedges, clutter |
 | `wall` (timber) | yes | yes | 300 | axe ×4 → wood | placeable, 1 wood |
 | `wall_stone` | yes | yes | 900 | pick ×6 → stone | placeable, 1 stone |
 | `floor` (planks) | yes | yes | 120 | axe ×2 → wood | placeable, 1 wood |
@@ -243,9 +243,16 @@ See §6. Facing follows the mouse. The held item is drawn pointed at the mouse.
 - Hotbar: `1` sword · `2` bow · `3` shovel · `4` axe · `5` pickaxe. Left click = use the
   selected item on the world or on enemies. Right click = context menu for the tile under
   the cursor: interact with portals, build into air, craft (never an attack).
-- Inventory: a DOM panel (key `I`/`Tab`), stack counts, drag to hotbar. Not built yet.
-- Items are `{ id, count }`; item definitions in `items.js` hold: tool type, damage, timing,
-  what tile it places, stack limit.
+- **Inventory**: 20 slots (5×4), one stack per item id, stacks are unlimited — so the slot
+  count is the only limit and it bites when you carry many *different* things. A DOM window
+  on `I`/`Tab`; click-and-hold a stack and release on another slot to swap. When every slot
+  is taken, drops stay on the ground ("inventory full"). Build and craft pull from it.
+- **Crafting**: right-click → Craft… opens the same palette widget as Build, titled Craft.
+  Each entry is a recipe (`cost` → `gives`); affordable ones are lit; a click crafts one
+  batch and the palette stays open with refreshed counts. Recipes are data in `items.js`.
+  Nothing crafted ever goes straight into a context menu.
+- Items are `{ id, n }`; item definitions in `items.js` hold kind (weapon / tool / material),
+  tool type, and ammo.
 
 ### 7.4 Needs (not built yet — the next major system after digging)
 - **Hunger**, **thirst**, **fatigue**. Each is a 0–100 meter that drains with time (faster

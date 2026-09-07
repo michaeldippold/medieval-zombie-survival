@@ -40,7 +40,8 @@ export const BOW = { RANGE: 800, COOLDOWN: 0.6, ARROW_SPEED: 1100, ARROW_STICK: 
 
 export const TOOLS = { COOLDOWN: 0.3 };
 
-export const START_INVENTORY = { dirt: 0, wood: 0, stone: 0, arrow: 10 };
+export const START_INVENTORY = { arrow: 10 };
+export const INVENTORY = { SLOTS: 20, COLS: 5 };   // one stack per item id, stacks are unlimited; the slot count is the limit
 
 export const DROPS = { SIZE: 12, FRICTION: 6, PICKUP_PAD: 6, POP_VX: 60, POP_VY: -220 };
 
@@ -61,5 +62,5 @@ export const COLORS = {
   arrowShaft: '#6b4a24', arrowHead: '#cfd4da', arrowFletch: '#eef1f4',
   hud: 'rgba(20,26,38,0.55)', hudText: 'rgba(20,26,38,0.7)', crosshair: 'rgba(20,26,38,0.75)',
   ghostOk: 'rgba(120,220,120,0.9)', ghostBad: 'rgba(230,57,70,0.9)',
-  items: { dirt: '#7a4f2a', wood: '#a5703a', stone: '#8a8d93', arrow: '#cfd4da' },
+  items: { dirt: '#7a4f2a', wood: '#a5703a', stone: '#8a8d93', leaf: '#3f8f3a', arrow: '#cfd4da' },
 };

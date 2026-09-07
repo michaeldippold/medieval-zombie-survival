@@ -57,6 +57,9 @@ The first full loop: get resources → build a house → don't die.
 - [x] Arrows finite: 10 to start; misses drop where they land; 60% recovered off a hit; fletch 4 from 1 wood
 - [x] Bedrock indestructible; world edge walls
 - [x] Build palette (tile thumbnails, have/need, lit if affordable) → build mode with a ghost preview; click to stamp; Esc or hotbar key to leave; weapons/tools off while building
+- [x] Craft palette (same widget): recipes as data; click crafts one batch; arrows ×4 for 1 wood is the only recipe so far
+- [x] Inventory: 20 slots, one unlimited stack per item, `I`/`Tab` window, drag-to-swap, full → drops stay on the ground
+- [x] Leaves drop and can be placed back
 - [x] Surface stone actually spawns (mounds were being excluded by tree spacing); underground stone veins; natural caves
 - [x] Underground base confirmed: dig in, cap with floor + trapdoor, sealed
 - [x] Pits: zombies fall in and stack; a 2-deep 1-wide pit holds one before the next walks over it. Emergent from body collision — keep.
@@ -79,8 +82,8 @@ The first full loop: get resources → build a house → don't die.
 - [ ] Underground finds: buried cellars/ruins with loot, clay, a water table
 - [ ] Wall/floor/door tiers with HP per DESIGN §5.3; zombies attack walls (slowly)
 - [ ] Hammer repair
-- [ ] Workbench + recipes as data; DOM crafting panel
-- [ ] Inventory panel (DOM), drag to hotbar
+- [ ] Workbench: recipes gated by a nearby station (the palette already exists)
+- [ ] Drag inventory items onto the hotbar; hotbar slots become inventory slots
 - [ ] Arrows as items: finite, dropped on miss, recovered from corpses
 - [ ] Played: rebuild the house in stone
 

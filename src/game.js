@@ -10,20 +10,22 @@ import { updateCombat, updateHotbar } from './combat.js';
 import { updateTools } from './tools.js';
 import { updateBuild, enterBuild, exitBuild } from './build.js';
 import { updateHints } from './ui/hints.js';
-import { menuItemsForTile } from './interactions.js';
-import { BUILDS } from './items.js';
+import { menuItemsForTile, buildEntries, craftEntries, craft } from './interactions.js';
+import { createInventory, swap } from './inventory.js';
 import { ContextMenu } from './ui/menu.js';
-import { BuildMenu } from './ui/buildMenu.js';
+import { Palette } from './ui/palette.js';
+import { InventoryPanel } from './ui/inventoryPanel.js';
 import { render } from './render/renderer.js';
 
-export function createGame({ canvas, menuEl, buildEl, status }) {
+export function createGame({ canvas, menuEl, paletteEl, inventoryEl, status }) {
   const ctx = canvas.getContext('2d');
   const input = createInput(canvas);
   const menu = new ContextMenu(menuEl, canvas);
-  const buildMenu = new BuildMenu(buildEl, canvas);
+  const palette = new Palette(paletteEl, canvas);
+  const invPanel = new InventoryPanel(inventoryEl, canvas, (a, b) => swap(state.inventory, a, b));
 
   const state = {
-    input, world: null, player: null, zombies: [], drops: [], arrows: [], inventory: {},
+    input, world: null, player: null, zombies: [], drops: [], arrows: [], inventory: createInventory(),
     swing: null, bowCool: 0, toolCool: 0, target: null, build: null, aim: 0, hint: null,
     held: 'sword', hotbarAnim: 0, camera: { x: 0, y: 0 }, vision: { visible: new Set(), exposed: true },
     attention: null, kills: 0, time: 0, paused: false,
@@ -34,10 +36,11 @@ export function createGame({ canvas, menuEl, buildEl, status }) {
     state.world = map.world;
     state.player = createPlayer(map.playerSpawn.x, map.playerSpawn.y);
     state.zombies = map.zombieSpawns.map(s => createZombie(s.x, s.y));
-    state.drops = []; state.arrows = []; state.inventory = { ...START_INVENTORY };
+    state.drops = []; state.arrows = []; state.inventory = createInventory(START_INVENTORY);
     state.swing = null; state.bowCool = 0; state.toolCool = 0; state.target = null; state.build = null; state.hint = null;
     state.attention = null; state.kills = 0; state.time = 0; state.paused = false;
     status.total.textContent = state.zombies.length;
+    palette.close(); invPanel.close(); menu.close();
     updateCamera();
   }
 
@@ -51,16 +54,21 @@ export function createGame({ canvas, menuEl, buildEl, status }) {
   }
 
   let lastMenuAt = { clientX: 0, clientY: 0 };
-  const ui = { openBuild: () => buildMenu.open(BUILDS, state.inventory, lastMenuAt.clientX, lastMenuAt.clientY, id => enterBuild(state, id)) };
+  const ui = {
+    openBuild: () => palette.open({ title: 'Build', entries: buildEntries(state.inventory), ...lastMenuAt, onPick: id => { palette.close(); enterBuild(state, id); } }),
+    openCraft: () => palette.open({ title: 'Craft', entries: craftEntries(state.inventory), ...lastMenuAt, onPick: id => { craft(state, id); ui.openCraft(); } }),
+  };
 
   function update(dt) {
     const a = input.actions;
     if (a.restart) restart();
     if (a.closeMenu) menu.close();
-    if (buildMenu.consumeJustClosed()) a.use = false;         // the click that dismissed the palette isn't a swing
+    if (palette.consumeJustClosed()) a.use = false;         // the click that dismissed a palette isn't a swing
+    if (a.inventory) { if (invPanel.isOpen) invPanel.close(); else { palette.close(); invPanel.open(state.inventory); } }
     // Escape closes the topmost thing; with nothing open it toggles pause
     if (a.escape) {
-      if (buildMenu.isOpen) buildMenu.close();
+      if (invPanel.isOpen) invPanel.close();
+      else if (palette.isOpen) palette.close();
       else if (state.build) exitBuild(state);
       else if (menu.isOpen) menu.close();
       else state.paused = !state.paused;
@@ -85,6 +93,7 @@ export function createGame({ canvas, menuEl, buildEl, status }) {
     else { state.target = null; state.toolCool = Math.max(0, state.toolCool - dt); state.bowCool = Math.max(0, state.bowCool - dt); state.hotbarAnim = Math.max(0, state.hotbarAnim - dt); }
     updateDrops(state, dt);
     updateHints(state, dt);
+    invPanel.refresh(state.inventory);
 
     status.vis.textContent = state.vision.exposed ? 'exposed' : 'sealed';
     status.hit.textContent = state.kills;
