@@ -67,6 +67,40 @@ The first full loop: get resources → build a house → don't die.
 - [ ] Zombies attack timber/stone walls when they're what's in the way (slowly) — otherwise a wall is a cheat
 - [ ] Played: fell trees, build a hut with a door, seal it, survive; dig a basement, cap it, confirm sealed
 
+## Phase 2b — Everything is an item (DESIGN §7.3, §5.5)
+
+Replace "Build… palette crafts-and-places in one step" with the Minecraft model: placeables are
+items, the hotbar holds items, placing is using the selected item. The ghost preview stays; it
+is the placement UI regardless of where the item came from. Mostly deletion. Do in this order —
+each step leaves the game playable.
+
+1. [ ] **Hotbar = inventory slots 0–4.** `HOTBAR` stops being a fixed list; the bar renders
+       `inventory.slots[0..4]` (icons + counts). Number keys select a slot. `state.held` becomes
+       a slot index; "what am I holding" is `slots[held]?.id`. Start inventory puts sword, bow,
+       shovel, axe, pickaxe in slots 0–4 and 10 arrows in slot 5.
+2. [ ] **Drag between inventory and hotbar.** The inventory window shows all 20 slots with the
+       first row marked as the bar; dragging already swaps any two slots, so this is styling.
+3. [ ] **Placeable items.** `ITEMS` gains `places: <tile kind>` (and a `make(insideDir)`) for
+       dirt, stone, leaf, wall, floor, wall_stone, ladder, door, shutter, hatch. Holding one
+       shows the ghost; left click stamps one and takes 1 from the stack. Empty stack → ghost
+       goes red, hint "none left". Selecting another slot is the only way out; no build mode
+       flag, no Esc needed.
+4. [ ] **Craft, not Build.** Remove `BUILDS` and the Build… entry. `CRAFTS` grows: timber wall
+       (1 wood → 1), plank floor (1 wood → 1), ladder (1 wood → 1), door (2 wood → 1), shutter
+       (1 wood → 1), trapdoor (2 wood → 1), stone wall (1 stone → 1), arrows (1 wood → 4).
+       Crafted output prefers a free hotbar slot, then inventory, then drops at your feet.
+5. [ ] **Dismantle drops the thing.** Player harvesting a placed tile drops its item
+       (`door` → 1 door, `wall` → 1 timber wall), not its ingredients. Zombie destruction
+       (`broken`) drops nothing but splinters — losing it and taking it down are different.
+       Raw earth keeps dropping raw earth.
+6. [ ] **Tools are items too.** Sword/bow/shovel/axe/pick live in slots like anything else; they
+       can be dropped, moved, and later crafted, looted and worn out. Bow reads ammo from
+       inventory as now.
+7. [ ] Remove `build.js`'s mode machinery (`enterBuild`/`exitBuild`), keep `canPlaceAt` and the
+       ghost. Remove `buildEntries`. Update legend, DESIGN §5.5 / §7.3, and this file.
+8. [ ] Played: dig, craft a door, drag it to the bar, place it, take it down with the axe, pick
+       the door back up, place it again.
+
 ## Phase 3 — Needs and time (DESIGN §7.4, §12)
 
 - [ ] Day/night: 10-minute day, sky colour ramp, ambient overlay ramp, day counter in HUD
@@ -83,7 +117,6 @@ The first full loop: get resources → build a house → don't die.
 - [ ] Wall/floor/door tiers with HP per DESIGN §5.3; zombies attack walls (slowly)
 - [ ] Hammer repair
 - [ ] Workbench: recipes gated by a nearby station (the palette already exists)
-- [ ] Drag inventory items onto the hotbar; hotbar slots become inventory slots
 - [ ] Arrows as items: finite, dropped on miss, recovered from corpses
 - [ ] Played: rebuild the house in stone
 
@@ -137,3 +170,5 @@ The first full loop: get resources → build a house → don't die.
 - 2026-09-07 — Stone yields per hit until the block is gone; trees are 1:1 per trunk tile.
 - 2026-09-07 — Building is a mode, not a list: palette → ghost → stamp. Esc leaves it. Nothing else works while it's on.
 - 2026-09-07 — Underground bases are legitimate; the counterweight is that nothing renewable exists down there, plus needs.
+- 2026-09-07 — Everything is an item (Phase 2b). The Build… palette was a shortcut that fused crafting and placing; that fusion means placeables can't be loot, can't take inventory space, and can't be picked back up. Minecraft model instead: craft → inventory → hotbar → place. Ghost preview stays as the placement UI.
+- 2026-09-07 — Taking a thing down (harvest) returns the thing; losing it (zombie breaks it) returns nothing.

@@ -176,15 +176,17 @@ opaque = solid
   picked up by walking over them. Stone yields every hit; everything else on removal.
 - What's left behind: earth tiles become air with a dark-earth `back`; structure tiles keep
   whatever `back` they had (plaster inside, sky outside).
-- **Right click on an empty tile → Build…** opens the build palette: every placeable drawn
-  as its tile, with `have/need` per material (5/1 wood means you can build five). Affordable
-  ones are lit; the rest are dimmed and inert. Picking one enters **build mode**: the tile
-  follows the cursor as a half-opaque ghost, outlined green where it can go and red where it
-  can't (not empty, blocked by a body, too far, can't afford). Each left click stamps one.
-  Build mode stays on until Esc or a hotbar key; while it's on, weapons and tools are off.
-  Doors and shutters take their "inside" from the side the player stood on. Placed tiles
-  inherit the air tile's `back`.
-- **Dismantling** is harvesting a built tile with the matching tool; it refunds the material.
+- **Placing** (target model, TODO Phase 2b; the current Build… palette is the interim): a
+  placeable is an *item*. Hold it on the hotbar and it follows the cursor as a half-opaque
+  ghost, outlined green where it can go and red where it can't (not empty, blocked by a
+  body, too far, none left). Each left click stamps one and takes one from the stack.
+  Selecting another slot is the exit; there is no build mode. Raw blocks (dirt, stone,
+  leaves) are placeable straight from the ground; structures (walls, floors, ladders, doors,
+  shutters, trapdoors) are crafted from wood or stone first. Doors and shutters take their
+  "inside" from the side the player stood on. Placed tiles inherit the air tile's `back`.
+- **Dismantling** is harvesting a built tile with the matching tool. It drops the *item*
+  (a door drops a door), so anything you built can be moved. A tile a zombie breaks drops
+  nothing — losing it and taking it down are different.
 - **Reach**: 110 px from the player's centre to the tile's centre, for everything.
 - Bedrock cannot be dug. The world edges are invisible solid walls.
 - **Tunnels are one tile tall.** The player is 36 px in a 40 px tile. This is a deliberate
