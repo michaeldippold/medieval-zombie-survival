@@ -101,6 +101,47 @@ each step leaves the game playable.
 8. [ ] Played: dig, craft a door, drag it to the bar, place it, take it down with the axe, pick
        the door back up, place it again.
 
+## Phase 2c — Extensibility: make the three vectors cheap
+
+The game grows along three vectors — blocks, crafts, entities — plus systems. This phase makes
+the first three data-driven enough that a rule-free addition is one row, and a rule-ful one is
+one row plus one predicate. Do after 2b (crafting redo) so the item model is settled.
+
+### Blocks (one row for a plain block, row + painter for a distinctive one)
+- [x] Default painter from the def (`color`, `cap`, `edge`); dedicated painters only for looks
+- [ ] Load-time validation of `TILE_DEFS`: every non-air kind has `color` or a painter; every
+      `harvest.drop` is a known item; portals have `name` and `barFrom`. Throw on boot, not in play.
+- [ ] `contact` hook on defs (e.g. `spikes: { contact: { dmg: 10 } }`) checked once in the
+      player/zombie body step — the first rule-ful block type, added as data
+- [ ] Placeables derived from items (`ITEMS[id].places`), not a separate list — done in 2b step 3
+- [ ] `docs/ADDING.md`: the three checklists (block / craft / entity), each a numbered list of
+      files touched, with a worked example. Keep it to one page.
+
+### Crafts (one row per recipe)
+- [ ] Recipe validation at boot: every `cost` and `gives` id exists in `ITEMS`
+- [ ] Optional `station` on a recipe; the Craft palette filters by stations within reach.
+      No station = craftable anywhere (arrows). Workbench is the first station (Phase 4).
+- [ ] Recipe `icon` defaults to the `gives` item's icon
+
+### Entities (create + decide + painter per kind)
+- [ ] Split `zombie.js`: `entities/body.js` owns gravity, ladder overlap, `moveBody`, stagger
+      and death/corpse timers for any mover; `zombie.js` keeps senses + decide only
+- [ ] `state.entities` as one list with `kind`; per-kind `update(state, e, dt)` and
+      `paint(ctx, e)` looked up from a registry (`entities/index.js`)
+- [ ] Collision rules as a table: who is solid to whom (`player`, `zombie`, `climber`, `corpse`,
+      `animal`) instead of inline filters in the zombie loop
+- [ ] Zombie-specific senses (`sees`, `lastSeen`, attention) stay in `zombie.js`; a shared
+      `canSee(state, e)` helper for anything that uses the enclosure model
+- [ ] Spawn table in worldgen: `{ kind, count, where }` instead of a hardcoded zombie loop
+- [ ] Prove it with the first animal: **chicken** — wanders, flees when it can see you, dies in
+      one hit, drops `meat`. Meat is the seed for Phase 3 hunger. If adding it touches anything
+      outside `entities/chicken.js`, the registry, and the spawn table, the split isn't done.
+
+### Systems (not data — noted so it's not forgotten)
+- Needs, day/night, noise, spawning pressure are `(state, dt)` functions added to the update
+  order in `game.js`. Each gets a config block. No changes needed to make these "easy";
+  they're design work, not plumbing.
+
 ## Phase 3 — Needs and time (DESIGN §7.4, §12)
 
 - [ ] Day/night: 10-minute day, sky colour ramp, ambient overlay ramp, day counter in HUD
@@ -172,3 +213,4 @@ each step leaves the game playable.
 - 2026-09-07 — Underground bases are legitimate; the counterweight is that nothing renewable exists down there, plus needs.
 - 2026-09-07 — Everything is an item (Phase 2b). The Build… palette was a shortcut that fused crafting and placing; that fusion means placeables can't be loot, can't take inventory space, and can't be picked back up. Minecraft model instead: craft → inventory → hotbar → place. Ghost preview stays as the placement UI.
 - 2026-09-07 — Taking a thing down (harvest) returns the thing; losing it (zombie breaks it) returns nothing.
+- 2026-09-07 — Combat numbers are **tuned**, not placeholders: two zombies in a room cost half your HP while playing carefully. `SWORD.*`, `ZOMBIE.HP`, `ZOMBIE.CONTACT_DMG` change only with a reason. Pressure systems (night, hordes, needs) stack on top of this baseline; don't re-tune the baseline to compensate for them.

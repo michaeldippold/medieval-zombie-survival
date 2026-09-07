@@ -456,6 +456,12 @@ because zombies decide using this frame's visibility.
 
 **Tunables** live in `config.js` only. A number in a system file is a bug.
 
+**Growth vectors.** New content arrives along three data-driven paths — a block is a row in
+`TILE_DEFS` (plus a painter only if it has a distinctive look), a craft is a row in `CRAFTS`,
+an entity is a `create` + `decide` + `paint` registered by kind — and one design path: a
+system, which is a `(state, dt)` function in the update order. TODO Phase 2c is the work that
+makes the first three genuinely one-row. `docs/ADDING.md` (planned) is the checklist.
+
 ## 17. Open questions
 
 - Should zombies stack (stand on each other) to reach upstairs shutters? Fun, horrifying,
