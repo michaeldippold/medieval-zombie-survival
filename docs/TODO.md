@@ -101,6 +101,19 @@ each step leaves the game playable.
 8. [ ] Played: dig, craft a door, drag it to the bar, place it, take it down with the axe, pick
        the door back up, place it again.
 
+### 2b-trees — trunks are blocks, logs → planks
+- [ ] Trunk tile fills the whole 40px block (bark texture edge to edge) so it reads as a block
+      you could place, and looks right beside planks in a wall
+- [ ] Trunk drops a **log** item; logs are placeable (a bark block for builds — visual variety,
+      costs a whole log)
+- [ ] Craft: 1 log → 4 **planks**. Walls, floors, ladders, doors, shutters, trapdoors cost planks
+      (same numbers as today's wood costs). Arrows: 1 plank → 4. This is the 2D wood-yield fix:
+      4× per tree, no farming needed, one block still equals one item.
+- [ ] Some trees spawn with 2-wide trunks (both columns are trunk tiles; leaf blob spans both);
+      more logs per tree and a different silhouette
+- [ ] Tree counts/heights retuned after the above so a starter house is ~2 trees of work
+- Backlog: saplings / regrowth, if wood ever runs dry on a long run
+
 ## Phase 2c — Extensibility: make the three vectors cheap
 
 The game grows along three vectors — blocks, crafts, entities — plus systems. This phase makes
@@ -213,4 +226,5 @@ one row plus one predicate. Do after 2b (crafting redo) so the item model is set
 - 2026-09-07 — Underground bases are legitimate; the counterweight is that nothing renewable exists down there, plus needs.
 - 2026-09-07 — Everything is an item (Phase 2b). The Build… palette was a shortcut that fused crafting and placing; that fusion means placeables can't be loot, can't take inventory space, and can't be picked back up. Minecraft model instead: craft → inventory → hotbar → place. Ghost preview stays as the placement UI.
 - 2026-09-07 — Taking a thing down (harvest) returns the thing; losing it (zombie breaks it) returns nothing.
+- 2026-09-07 — Wood yield in 2D: log → 4 planks at the crafting step, not per-hit trunks. Trunks stay 1 block = 1 log so bark blocks are real, placeable, and cost a full log.
 - 2026-09-07 — Combat numbers are **tuned**, not placeholders: two zombies in a room cost half your HP while playing carefully. `SWORD.*`, `ZOMBIE.HP`, `ZOMBIE.CONTACT_DMG` change only with a reason. Pressure systems (night, hordes, needs) stack on top of this baseline; don't re-tune the baseline to compensate for them.
