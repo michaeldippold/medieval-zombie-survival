@@ -195,6 +195,19 @@ one row plus one predicate. Do after 2b (crafting redo) so the item model is set
 
 ## Phase 8 — Polish
 
+### Art direction (decided 2026-09-07): MiniFolks-style 16px characters at 2×
+Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers → NPCs, animals).
+16×16 art on a 32×32 canvas, idle/walk/jump/death, free licence, ~$30 for the lot.
+
+- [ ] **Tile size 40 → 32 first**, before any art: `TILE`, `VIEW` (e.g. 800×480 = 25×15 tiles),
+      player 20×28, zombie 24×24, px-based speeds/reach ×0.8, `image-rendering: pixelated`,
+      integer CSS scaling. Own commit; re-play once. Pixel art must scale by integers, and 16px
+      tiles at 2× = 32 matches the character density exactly.
+- [ ] Confirm an *unarmed* knight sprite exists (weapons are baked into most poses). Plan: unarmed
+      body + the existing aim-at-mouse weapon overlay, so free aim survives the art pass.
+- [ ] Matching 16px tileset (dirt, grass, stone, planks, bark, leaves, door, shutter, trapdoor,
+      ladder). Painters become sprite blits; the default painter path stays for prototypes.
+- [ ] Sprite sheet loader + animation state per entity (idle / walk / jump / death), flip by facing
 - [ ] Sprite pass (swap painters only)
 - [ ] Audio pass
 - [ ] Settings (keybinds, volume)
