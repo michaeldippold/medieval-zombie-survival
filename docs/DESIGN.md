@@ -319,9 +319,11 @@ column before the next one walks across. That is emergent and intended.
 ## 9. Vision: the enclosure model
 
 **Rule**: flood-fill from the player's tile through non-opaque tiles, 4-connected. The set
-of reached tiles is *visible*. Opaque tiles bordering visible air are also marked visible
-(you see the wall; you don't see through it). If the fill reaches the top row, the player
-is **exposed**; otherwise **sealed**.
+of reached tiles is *visible*. Opaque tiles touching visible air in any of the **8**
+directions are also marked visible (you see the wall, its corners, and the ground it stands
+on; you don't see through it). Sight spreads 4-way, lighting spreads 8-way — the asymmetry
+is deliberate: no peeking through diagonal gaps, no dark corners in your own house. If the
+fill reaches the top row, the player is **exposed**; otherwise **sealed**.
 
 Consequences, all of which are intentional and none of which required extra code:
 - A shuttered house is dark outside and lit inside. Open one shutter and the whole outside
