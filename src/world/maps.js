@@ -16,6 +16,7 @@ export function buildStarterMap() {
   const S = G.SURFACE;
 
   // ---- terrain
+  world.surface.fill(S);
   for (let c = 0; c < G.COLS; c++) {
     world.set(c, S, makeTile('grass'));
     for (let r = S + 1; r < G.STONE_FROM; r++) world.set(c, r, makeTile('dirt'));

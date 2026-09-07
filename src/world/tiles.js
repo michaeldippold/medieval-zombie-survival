@@ -95,8 +95,10 @@ export function harvestTile(t, tool) {
   return { removed, drop };
 }
 
-// What an air tile left behind by removal looks like: earth shows dark earth, structures keep their backwall.
-export function airAfter(t) {
-  const back = ['dirt', 'grass', 'stone'].includes(t.kind) ? 'earth' : t.back;
+// What an air tile left behind by removal looks like: earth removed underground shows dark earth;
+// earth removed above the surface (a mound, a placed block) shows sky; structures keep their backwall.
+export function airAfter(t, underground) {
+  const earthy = ['dirt', 'grass', 'stone'].includes(t.kind);
+  const back = earthy ? (underground ? 'earth' : null) : t.back;
   return back ? makeTile('air', { back }) : null;
 }

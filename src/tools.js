@@ -26,5 +26,5 @@ export function updateTools(state, dt) {
   const res = harvestTile(t, item.tool);
   if (res.wrongTool) { showHint(state, `needs ${TOOL_NAMES[res.wrongTool]}`); return; }
   if (res.drop) spawnDrop(state, c * TILE + TILE / 2, r * TILE + TILE / 2, res.drop);
-  if (res.removed) world.set(c, r, airAfter(t)); else world.touch();
+  if (res.removed) world.set(c, r, airAfter(t, world.isUnderground(c, r))); else world.touch();
 }

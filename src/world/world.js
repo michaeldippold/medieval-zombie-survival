@@ -8,7 +8,9 @@ export class World {
     this.grid = Array.from({ length: rows }, () => Array(cols).fill(null));
     this.version = 0;          // bumped on any structural change; caches key off it
     this._climbCols = null; this._climbVersion = -1;
+    this.surface = new Int16Array(cols);   // per column: the row where the ground starts, set by the generator
   }
+  isUnderground(c, r) { return this.inBounds(c, r) && r >= this.surface[c]; }
   get pxWidth() { return this.cols * TILE; }
   get pxHeight() { return this.rows * TILE; }
 
