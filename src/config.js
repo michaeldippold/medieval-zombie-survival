@@ -7,7 +7,7 @@ export const VIEW = { W: 960, H: 560, CAMERA_Y_BIAS: 0.62 };   // bias > 0.5 kee
 
 export const PHYSICS = { GRAV: 1800, MAX_FALL: 1000 };
 
-export const WORLDGEN = { COLS: 120, ROWS: 40, SURFACE: 24, STONE_FROM: 32, TREES: 16, STONE_MOUNDS: 5, SEED: 7 };
+export const WORLDGEN = { COLS: 120, ROWS: 40, SURFACE: 24, STONE_FROM: 32, TREES: 16, STONE_MOUNDS: 7, STONE_VEINS: 40, CAVES: 6, SEED: 7 };
 
 export const PLAYER = {
   W: 26, H: 36,
@@ -60,5 +60,6 @@ export const COLORS = {
   accent: '#f2b134', alert: '#e63946', fog: 'rgba(12,14,22,0.84)',
   arrowShaft: '#6b4a24', arrowHead: '#cfd4da', arrowFletch: '#eef1f4',
   hud: 'rgba(20,26,38,0.55)', hudText: 'rgba(20,26,38,0.7)', crosshair: 'rgba(20,26,38,0.75)',
+  ghostOk: 'rgba(120,220,120,0.9)', ghostBad: 'rgba(230,57,70,0.9)',
   items: { dirt: '#7a4f2a', wood: '#a5703a', stone: '#8a8d93', arrow: '#cfd4da' },
 };

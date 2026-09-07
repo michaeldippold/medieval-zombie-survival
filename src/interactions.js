@@ -6,7 +6,8 @@ import { BUILDS, CRAFTS, ITEMS } from './items.js';
 import { canAfford, take, give, costLabel } from './inventory.js';
 
 // Returns [{ label, primary?, disabled?, run? }]. Always ends with Cancel.
-export function menuItemsForTile(state, c, r) {
+// `ui.openBuild()` opens the build palette at the same spot the menu was opened.
+export function menuItemsForTile(state, c, r, ui) {
   const { world, player: p, zombies, inventory: inv } = state;
   const t = world.get(c, r);
   const items = [];
@@ -37,14 +38,8 @@ export function menuItemsForTile(state, c, r) {
     }
     if (t.bars > 0) items.push({ label: `Remove bar (${t.bars}/${PORTAL.MAX_BARS})${!inside ? sideNote : far}`, disabled: !near || !inside, run: change(() => { t.bars--; t.barHp = PORTAL.BAR_HP; }) });
   } else if (isAir(t)) {
-    // build menu: everything placeable, with its cost and why you can't
-    const insideDir = Math.sign(pcx - tcx) || 1;
-    for (const b of BUILDS) {
-      const afford = canAfford(inv, b.cost);
-      const why = !afford ? ` — need ${costLabel(b.cost)}` : blocked ? ' (blocked)' : far;
-      items.push({ label: `Build ${b.label.toLowerCase()} · ${costLabel(b.cost)}${why}`, primary: afford && near && !blocked, disabled: !afford || !near || blocked,
-        run: () => { if (take(inv, b.cost)) { const tile = b.make(insideDir); tile.back = t?.back ?? null; world.set(c, r, tile); } } });
-    }
+    const anyAffordable = BUILDS.some(b => canAfford(inv, b.cost));
+    items.push({ label: anyAffordable ? 'Build…' : 'Build… (nothing you can afford yet)', primary: anyAffordable, run: () => ui.openBuild() });
     for (const cr of CRAFTS) {
       const afford = canAfford(inv, cr.cost);
       items.push({ label: `${cr.label} · ${costLabel(cr.cost)}${afford ? '' : ` — need ${costLabel(cr.cost)}`}`, disabled: !afford,

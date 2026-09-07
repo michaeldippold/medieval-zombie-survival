@@ -5,6 +5,7 @@ import { ITEMS } from '../items.js';
 import { paintTile } from './tiles.js';
 import { drawPlayer, drawZombie, drawSwing, drawArrow, drawDrop } from './sprites.js';
 import { drawHud } from '../ui/hud.js';
+import { buildById } from '../build.js';
 
 export function render(ctx, state) {
   const { world, camera, vision, player: p, input } = state;
@@ -37,10 +38,16 @@ export function render(ctx, state) {
   drawPlayer(ctx, p, state.aim, state.held);
   for (const a of state.arrows) drawArrow(ctx, a);
 
-  // cursor feedback: portals and buildable air get an outline; a tool target gets a stronger one
+  // cursor feedback: build ghost, or outlines for portals / buildable air / tool targets
   const mc = world.colOf(input.mouse.wx), mr = world.rowOf(input.mouse.wy);
   const hover = world.get(mc, mr);
-  if (state.target) {
+  if (state.build) {
+    const b = state.build, def = buildById(b.id);
+    const insideDir = Math.sign(p.x + p.w / 2 - (b.c * T + T / 2)) || 1;
+    ctx.save(); ctx.globalAlpha = 0.5; paintTile(ctx, b.c, b.r, def.make(insideDir)); ctx.restore();
+    ctx.strokeStyle = b.ok ? COLORS.ghostOk : COLORS.ghostBad; ctx.lineWidth = 2;
+    ctx.strokeRect(b.c * T - 1, b.r * T - 1, T + 2, T + 2);
+  } else if (state.target) {
     ctx.strokeStyle = state.target.near ? COLORS.accent : 'rgba(242,177,52,0.4)'; ctx.lineWidth = 2;
     ctx.strokeRect(state.target.c * T - 2, state.target.r * T - 2, T + 4, T + 4);
   } else if (isPortal(hover) || (ITEMS[state.held].kind !== 'tool' && isAir(hover) && world.inBounds(mc, mr))) {

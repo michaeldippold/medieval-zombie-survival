@@ -1,5 +1,6 @@
-// Starter world: flat surface, dirt then stone then bedrock, trees, stone mounds, one timber house.
-// Seeded so the same world comes back on restart. Nothing at runtime may assume this layout.
+// Starter world: flat surface, dirt then stone then bedrock, stone mounds, trees, stone veins,
+// a few natural caves, one timber house. Seeded so the same world comes back on restart.
+// Nothing at runtime may assume this layout.
 import { TILE, PLAYER, ZOMBIE, WORLDGEN as G } from '../config.js';
 import { World } from './world.js';
 import { makeTile } from './tiles.js';
@@ -10,9 +11,11 @@ function mulberry32(seed) {
 
 export function buildStarterMap() {
   const rnd = mulberry32(G.SEED);
+  const ri = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
   const world = new World(G.COLS, G.ROWS);
   const S = G.SURFACE;
 
+  // ---- terrain
   for (let c = 0; c < G.COLS; c++) {
     world.set(c, S, makeTile('grass'));
     for (let r = S + 1; r < G.STONE_FROM; r++) world.set(c, r, makeTile('dirt'));
@@ -37,14 +40,24 @@ export function buildStarterMap() {
 
   const spawnCol = 10;
   const reserved = c => (c >= c0 - 3 && c <= c1 + 3) || Math.abs(c - spawnCol) < 4;
+  const surfaceClear = (c, w, h) => { for (let dc = 0; dc < w; dc++) for (let dr = 1; dr <= h; dr++) if (!world.inBounds(c + dc, S - dr) || world.get(c + dc, S - dr)) return false; return true; };
+
+  // ---- stone mounds on the surface: 3 wide, 2 tall, solid. Placed before trees so trees route around them.
+  for (let tries = 0, made = 0; tries < 300 && made < G.STONE_MOUNDS; tries++) {
+    const c = ri(3, G.COLS - 6);
+    if (reserved(c) || reserved(c + 2) || !surfaceClear(c - 1, 5, 3)) continue;
+    for (let dc = 0; dc < 3; dc++) { world.set(c + dc, S - 1, makeTile('stone')); world.set(c + dc, S - 2, makeTile('stone')); }
+    world.set(c + 1, S - 3, makeTile('stone'));
+    made++;
+  }
 
   // ---- trees: a trunk of 3–5 with a leaf blob on top. No collision, no sight blocking.
   const treeCols = [];
   for (let tries = 0; tries < 400 && treeCols.length < G.TREES; tries++) {
-    const c = 4 + Math.floor(rnd() * (G.COLS - 8));
-    if (reserved(c) || treeCols.some(x => Math.abs(x - c) < 4)) continue;
+    const c = ri(4, G.COLS - 5);
+    if (reserved(c) || treeCols.some(x => Math.abs(x - c) < 4) || !surfaceClear(c - 2, 5, 8)) continue;
     treeCols.push(c);
-    const h = 3 + Math.floor(rnd() * 3);
+    const h = ri(3, 5);
     for (let r = S - 1; r >= S - h; r--) world.set(c, r, makeTile('trunk'));
     const top = S - h;
     for (let dr = -2; dr <= 0; dr++) for (let dc = -2; dc <= 2; dc++) {
@@ -54,15 +67,24 @@ export function buildStarterMap() {
     }
   }
 
-  // ---- stone mounds on the surface: 3 wide, 2 tall. Solid.
-  for (let tries = 0, made = 0; tries < 200 && made < G.STONE_MOUNDS; tries++) {
-    const c = 4 + Math.floor(rnd() * (G.COLS - 8));
-    if (reserved(c) || treeCols.some(x => Math.abs(x - c) < 5)) continue;
-    let clear = true;
-    for (let dc = -1; dc <= 1; dc++) for (let dr = -2; dr <= -1; dr++) if (world.get(c + dc, S + dr)) clear = false;
-    if (!clear) continue;
-    for (let dc = -1; dc <= 1; dc++) { world.set(c + dc, S - 1, makeTile('stone')); if (dc === 0) world.set(c, S - 2, makeTile('stone')); }
-    made++;
+  // ---- stone veins in the dirt layer: small blobs, another way to find stone without a mound
+  for (let i = 0; i < G.STONE_VEINS; i++) {
+    const c = ri(1, G.COLS - 5), r = ri(S + 2, G.STONE_FROM - 3), w = ri(2, 4), h = ri(1, 2);
+    for (let dc = 0; dc < w; dc++) for (let dr = 0; dr < h; dr++) {
+      const t = world.get(c + dc, r + dr);
+      if (t && t.kind === 'dirt') world.set(c + dc, r + dr, makeTile('stone'));
+    }
+  }
+
+  // ---- natural caves: air pockets with an earth backwall. Something to find; later, something to find things in.
+  for (let i = 0; i < G.CAVES; i++) {
+    const cc = ri(6, G.COLS - 7), cr = ri(S + 4, G.STONE_FROM + 2), rx = ri(2, 4), ry = ri(1, 2);
+    if (cc >= c0 - 4 && cc <= c1 + 4) continue;
+    for (let dc = -rx; dc <= rx; dc++) for (let dr = -ry; dr <= ry; dr++) {
+      if ((dc * dc) / (rx * rx) + (dr * dr) / (ry * ry) > 1) continue;
+      const t = world.get(cc + dc, cr + dr);
+      if (t && (t.kind === 'dirt' || t.kind === 'stone')) world.set(cc + dc, cr + dr, makeTile('air', { back: 'earth' }));
+    }
   }
 
   // ---- zombies: spread along the surface, none near the spawn

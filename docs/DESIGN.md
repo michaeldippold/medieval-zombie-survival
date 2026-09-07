@@ -176,9 +176,14 @@ opaque = solid
   picked up by walking over them. Stone yields every hit; everything else on removal.
 - What's left behind: earth tiles become air with a dark-earth `back`; structure tiles keep
   whatever `back` they had (plaster inside, sky outside).
-- **Right click on an empty tile builds.** The menu lists every placeable with its cost and
-  the reason you can't (not enough wood, blocked, too far). Doors and shutters take their
-  "inside" from the side the player stood on. Placed tiles inherit the air tile's `back`.
+- **Right click on an empty tile → Build…** opens the build palette: every placeable drawn
+  as its tile, with `have/need` per material (5/1 wood means you can build five). Affordable
+  ones are lit; the rest are dimmed and inert. Picking one enters **build mode**: the tile
+  follows the cursor as a half-opaque ghost, outlined green where it can go and red where it
+  can't (not empty, blocked by a body, too far, can't afford). Each left click stamps one.
+  Build mode stays on until Esc or a hotbar key; while it's on, weapons and tools are off.
+  Doors and shutters take their "inside" from the side the player stood on. Placed tiles
+  inherit the air tile's `back`.
 - **Dismantling** is harvesting a built tile with the matching tool; it refunds the material.
 - **Reach**: 110 px from the player's centre to the tile's centre, for everything.
 - Bedrock cannot be dug. The world edges are invisible solid walls.
@@ -189,10 +194,21 @@ opaque = solid
 
 ### 5.6 World generation
 
-Starter world is hand-built (`maps.js`). The first generated world: flat-ish terrain with a
-surface line, a handful of placed structures (a house, a barn, a ruin, a well), stone below
-a depth, and zombie spawn points. Generation is a later phase; nothing in the runtime may
-assume a hand-built map.
+The starter world is seeded-random (`maps.js`): a flat surface at row 24, dirt to row 31,
+stone to row 38, bedrock at 39. On the surface: stone mounds (3×2 plus a cap, solid),
+trees (placed after mounds so they route around them), one timber house. Underground: stone
+veins in the dirt layer (another way to find stone), and a few natural caves — air pockets
+with an earth backwall.
+
+**What belongs underground.** Digging in is allowed, so there must be reasons to go down
+and reasons not to stay. Reasons to go: stone veins now; later iron ore (the tier-3 material
+only exists below the stone line), clay, a water table, buried cellars and ruins with loot.
+Reasons not to stay: nothing grows down there — no wood, no food, no water without a well —
+and needs (§7.4) will force the trip up. Caves are the seam between the two: a found room is
+faster than a dug one, but you didn't choose its exits.
+
+Later: varied terrain, more structure types (barn, ruin, well), spawn points by distance.
+Nothing in the runtime may assume a particular layout.
 
 ## 6. Physics
 

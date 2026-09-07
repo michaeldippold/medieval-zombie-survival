@@ -4,6 +4,7 @@ import { drawWeapon } from '../render/sprites.js';
 import { HOTBAR, ITEMS } from '../items.js';
 import { count } from '../inventory.js';
 import { isFeverish } from '../entities/player.js';
+import { buildById } from '../build.js';
 
 const MONO = '"IBM Plex Mono", monospace';
 
@@ -36,10 +37,18 @@ export function drawHud(ctx, state) {
 
   drawHotbar(ctx, state);
 
+  if (state.build) {
+    const label = `Building ${buildById(state.build.id).label.toLowerCase()} · click to place · Esc to stop`;
+    ctx.font = `bold 12px ${MONO}`; ctx.textAlign = 'center';
+    const bw = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(30,110,60,0.85)'; ctx.fillRect(W / 2 - bw / 2 - 10, H - UI.HOTBAR_SLOT - 40, bw + 20, 20);
+    ctx.fillStyle = '#fff'; ctx.fillText(label, W / 2, H - UI.HOTBAR_SLOT - 26);
+    ctx.textAlign = 'left';
+  }
   if (state.hint) {
     ctx.font = `12px ${MONO}`; ctx.textAlign = 'center';
     ctx.fillStyle = `rgba(255,255,255,${Math.min(1, state.hint.t / 0.4)})`;
-    ctx.fillText(state.hint.text, W / 2, H - UI.HOTBAR_SLOT - 22);
+    ctx.fillText(state.hint.text, W / 2, H - UI.HOTBAR_SLOT - (state.build ? 48 : 22));
     ctx.textAlign = 'left';
   }
 

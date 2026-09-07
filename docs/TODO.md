@@ -56,6 +56,9 @@ The first full loop: get resources → build a house → don't die.
 - [x] Dismantling: axe on walls/floors/doors/ladders, pickaxe on stone walls — refunds the material
 - [x] Arrows finite: 10 to start; misses drop where they land; 60% recovered off a hit; fletch 4 from 1 wood
 - [x] Bedrock indestructible; world edge walls
+- [x] Build palette (tile thumbnails, have/need, lit if affordable) → build mode with a ghost preview; click to stamp; Esc or hotbar key to leave; weapons/tools off while building
+- [x] Surface stone actually spawns (mounds were being excluded by tree spacing); underground stone veins; natural caves
+- [x] Underground base confirmed: dig in, cap with floor + trapdoor, sealed
 - [ ] Zombies fall into pits and cannot climb out of 2+ deep holes (verify, tune)
 - [ ] Zombies attack timber/stone walls when they're what's in the way (slowly) — otherwise a wall is a cheat
 - [ ] Played: fell trees, build a hut with a door, seal it, survive; dig a basement, cap it, confirm sealed
@@ -71,7 +74,8 @@ The first full loop: get resources → build a house → don't die.
 
 ## Phase 4 — Building tiers and crafting (DESIGN §11)
 
-- [ ] Materials: timber (trees, axe), stone (pick), iron (ore + forge)
+- [ ] Materials: timber (trees, axe), stone (pick), iron (ore + forge). Iron ore only below the stone line — the first real reason to dig deep (DESIGN §5.6)
+- [ ] Underground finds: buried cellars/ruins with loot, clay, a water table
 - [ ] Wall/floor/door tiers with HP per DESIGN §5.3; zombies attack walls (slowly)
 - [ ] Hammer repair
 - [ ] Workbench + recipes as data; DOM crafting panel
@@ -127,3 +131,5 @@ The first full loop: get resources → build a house → don't die.
 - 2026-09-07 — Trees have no collision and don't block sight; stone does both. "Building a stone mountain sounds fun; a tree that blocks you does not."
 - 2026-09-07 — Left click = use what you hold (weapon or tool). Right click = interact / build / craft menu. Never an attack.
 - 2026-09-07 — Stone yields per hit until the block is gone; trees are 1:1 per trunk tile.
+- 2026-09-07 — Building is a mode, not a list: palette → ghost → stamp. Esc leaves it. Nothing else works while it's on.
+- 2026-09-07 — Underground bases are legitimate; the counterweight is that nothing renewable exists down there, plus needs.

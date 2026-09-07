@@ -26,6 +26,15 @@ canvas:focus-visible { border-color: var(--accent); }
 .menu button[disabled] { color: var(--muted); cursor: default; }
 .menu button[disabled]:hover { background: transparent; }
 .menu .primary { color: var(--accent); font-weight: 500; }
+.build { position: absolute; z-index: 3; width: 420px; max-width: calc(100% - 8px); background: var(--menu-bg); border: 1px solid var(--key-border); border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: 8px; }
+.build-title { font-family: "Chakra Petch", system-ui, sans-serif; font-weight: 600; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 2px; }
+.build-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.build-cell { font: inherit; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; background: var(--key-bg); border: 1px solid var(--key-border); border-radius: 4px; color: var(--ink); cursor: pointer; }
+.build-cell:hover:not([disabled]), .build-cell:focus-visible { border-color: var(--accent); outline: none; }
+.build-cell[disabled] { opacity: 0.4; cursor: default; }
+.build-thumb { width: 40px; height: 40px; image-rendering: pixelated; background: #8fc5f0; border-radius: 2px; }
+.build-name { font-size: 12px; }
+.build-have { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 10px; }
 .legend div { display: flex; align-items: center; gap: 6px; }
 kbd { font: inherit; font-size: 11px; padding: 1px 6px; border-radius: 3px; background: var(--key-bg); border: 1px solid var(--key-border); color: var(--ink); border-bottom-width: 2px; }
