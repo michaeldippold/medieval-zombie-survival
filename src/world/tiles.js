@@ -6,15 +6,17 @@ import { PORTAL } from '../config.js';
 //   harvest.tool   'shovel' | 'axe' | 'pick' | 'any'
 //   harvest.hits   swings to remove the tile
 //   harvest.drop   item given (on removal, or every hit when perHit)
+// Look: a block with `color` (and optional `cap`, `edge`) is painted by the default painter;
+// only blocks with a distinctive look need an entry in render/tiles.js. A plain new block is one row here.
 export const TILE_DEFS = {
   air:        { solid: false, opaque: false },
-  dirt:       { solid: true,  opaque: true, hp: Infinity, harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
+  dirt:       { solid: true,  opaque: true, hp: Infinity, color: '#7a4f2a', harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
   grass:      { solid: true,  opaque: true, hp: Infinity, harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
-  stone:      { solid: true,  opaque: true, hp: Infinity, harvest: { tool: 'pick', hits: 6, drop: 'stone', perHit: true } },
-  bedrock:    { solid: true,  opaque: true, hp: Infinity },
+  stone:      { solid: true,  opaque: true, hp: Infinity, color: '#8a8d93', edge: 'rgba(0,0,0,0.22)', harvest: { tool: 'pick', hits: 6, drop: 'stone', perHit: true } },
+  bedrock:    { solid: true,  opaque: true, hp: Infinity, color: '#2b2d31' },
   trunk:      { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'axe', hits: 1, drop: 'wood' } },
   leaf:       { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'any', hits: 1, drop: 'leaf' } },
-  wall:       { solid: true,  opaque: true, hp: 300, harvest: { tool: 'axe', hits: 4, drop: 'wood' } },
+  wall:       { solid: true,  opaque: true, hp: 300, color: '#c9a978', edge: 'rgba(0,0,0,0.18)', harvest: { tool: 'axe', hits: 4, drop: 'wood' } },
   wall_stone: { solid: true,  opaque: true, hp: 900, harvest: { tool: 'pick', hits: 6, drop: 'stone' } },
   floor:      { solid: true,  opaque: true, hp: 120, harvest: { tool: 'axe', hits: 2, drop: 'wood' } },
   ladder:     { solid: false, opaque: false, hp: 40, climbable: true, harvest: { tool: 'axe', hits: 1, drop: 'wood' } },

@@ -1,12 +1,24 @@
 // Tile painters. One function per kind, plus shared decorations (bars, cracks, splinters).
 import { TILE as T, COLORS, PORTAL } from '../config.js';
-import { integrity } from '../world/tiles.js';
+import { integrity, TILE_DEFS } from '../world/tiles.js';
 
 export function paintTile(ctx, c, r, t) {
   const x = c * T, y = r * T;
   if (t.back) paintBack(ctx, x, y, t.back, c);
   const fn = PAINTERS[t.kind];
   if (fn) fn(ctx, x, y, t, c, r);
+  else paintPlain(ctx, x, y, t);
+}
+
+// Default look for any block without its own painter: a flat fill from the def, optional cap
+// strip and edge line, and cracks as it takes damage. A new plain block is one row in TILE_DEFS.
+function paintPlain(ctx, x, y, t) {
+  const d = TILE_DEFS[t.kind];
+  if (!d.color) return;
+  ctx.fillStyle = d.color; ctx.fillRect(x, y, T, T);
+  if (d.cap) { ctx.fillStyle = d.cap; ctx.fillRect(x, y, T, 8); }
+  if (d.edge) { ctx.strokeStyle = d.edge; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, T - 2, T - 2); }
+  paintCracks(ctx, x, y, integrity(t));
 }
 
 function paintBack(ctx, x, y, back, c) {
@@ -14,6 +26,7 @@ function paintBack(ctx, x, y, back, c) {
   else if (back === 'earth') { ctx.fillStyle = COLORS.earthBack; ctx.fillRect(x, y, T, T); }
 }
 
+// Only blocks with a distinctive look get a painter. Everything else uses paintPlain via its def.
 const PAINTERS = {
   air() {},
   grass(ctx, x, y, t) {
@@ -22,13 +35,6 @@ const PAINTERS = {
     ctx.fillStyle = COLORS.grassShade; ctx.fillRect(x, y + 8, T, 2);
     paintCracks(ctx, x, y, integrity(t));
   },
-  dirt(ctx, x, y, t) { ctx.fillStyle = COLORS.dirt; ctx.fillRect(x, y, T, T); paintCracks(ctx, x, y, integrity(t)); },
-  stone(ctx, x, y, t) {
-    ctx.fillStyle = COLORS.stone; ctx.fillRect(x, y, T, T);
-    ctx.strokeStyle = COLORS.stoneEdge; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, T - 2, T - 2);
-    paintCracks(ctx, x, y, integrity(t));
-  },
-  bedrock(ctx, x, y) { ctx.fillStyle = COLORS.bedrock; ctx.fillRect(x, y, T, T); },
   trunk(ctx, x, y) {
     ctx.fillStyle = COLORS.trunk; ctx.fillRect(x + 10, y, 20, T);
     ctx.fillStyle = COLORS.trunkShade; ctx.fillRect(x + 10, y, 4, T); ctx.fillRect(x + 20, y + 8, 3, 14);
@@ -36,11 +42,6 @@ const PAINTERS = {
   leaf(ctx, x, y, t, c, r) {
     ctx.fillStyle = COLORS.leaf; ctx.fillRect(x, y, T, T);
     ctx.fillStyle = COLORS.leafShade; ctx.fillRect(x + ((c * 7 + r * 3) % 20), y + ((c * 5 + r * 11) % 22), 10, 8);
-  },
-  wall(ctx, x, y, t) {
-    ctx.fillStyle = COLORS.wall; ctx.fillRect(x, y, T, T);
-    ctx.strokeStyle = COLORS.wallEdge; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, T - 2, T - 2);
-    paintCracks(ctx, x, y, integrity(t));
   },
   wall_stone(ctx, x, y, t) {
     ctx.fillStyle = COLORS.wallStone; ctx.fillRect(x, y, T, T);
