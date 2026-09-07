@@ -3,10 +3,10 @@ import { PHYSICS, DROPS } from '../config.js';
 import { moveBody, overlap } from '../physics.js';
 import { give } from '../inventory.js';
 
-export function spawnDrop(state, x, y, id, n = 1) {
+export function spawnDrop(state, x, y, id, n = 1, vx = (Math.random() - 0.5) * 2 * DROPS.POP_VX) {
   state.drops.push({
     x: x - DROPS.SIZE / 2, y: y - DROPS.SIZE / 2, w: DROPS.SIZE, h: DROPS.SIZE,
-    vx: (Math.random() - 0.5) * 2 * DROPS.POP_VX, vy: DROPS.POP_VY, onGround: false, hitX: false,
+    vx, vy: DROPS.POP_VY, onGround: false, hitX: false,
     id, n, age: 0,
   });
 }
