@@ -88,9 +88,12 @@ export function buildStarterMap() {
     }
   }
 
-  // ---- zombies: spread along the surface, none near the spawn
+  // ---- zombies: spread along the surface, never near the player spawn or inside the house
   const zombieSpawns = [];
-  for (let c = 24; c < G.COLS - 4; c += 7) zombieSpawns.push({ x: c * TILE + (rnd() - 0.5) * TILE * 3, y: S * TILE - ZOMBIE.H });
+  for (let c = 24; c < G.COLS - 4; c += 7) {
+    if (reserved(c)) continue;
+    zombieSpawns.push({ x: c * TILE + (rnd() - 0.5) * TILE * 3, y: S * TILE - ZOMBIE.H });
+  }
 
   return { world, playerSpawn: { x: spawnCol * TILE, y: S * TILE - PLAYER.H }, zombieSpawns };
 }
