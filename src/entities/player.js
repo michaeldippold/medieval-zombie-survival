@@ -1,10 +1,11 @@
 import { PHYSICS, PLAYER, INFECTION } from '../config.js';
 import { moveBody, onClimbable } from '../physics.js';
+import { contactDamage } from '../world/tiles.js';
 
 export function createPlayer(x, y) {
   return {
     x, y, w: PLAYER.W, h: PLAYER.H, vx: 0, vy: 0, onGround: false, hitX: false, facing: 1,
-    hp: PLAYER.HP, dead: false, cause: '', hurt: 0, ladderJump: 0,
+    hp: PLAYER.HP, dead: false, cause: '', hurt: 0, ladderJump: 0, hazardCd: 0,
     infected: false, infectT: 0,
   };
 }
@@ -33,6 +34,14 @@ export function updatePlayer(state, dt) {
 
   const living = state.zombies.filter(z => !z.stunned);
   moveBody(p, world.solidsNear(p).concat(living), dt);
+
+  // Environmental hazards (spikes, ...): sampled at the feet, not the whole body, so you have
+  // to actually be standing in it. Its own cooldown — this is not a bite, so no infection roll.
+  p.hazardCd = Math.max(0, p.hazardCd - dt);
+  if (p.hazardCd === 0) {
+    const hazard = contactDamage(world.tileAtPx(p.x + p.w / 2, p.y + p.h - 2));
+    if (hazard) { p.hp -= hazard.dmg; p.hurt = PLAYER.HURT_FLASH; p.hazardCd = hazard.cooldown; if (p.hp <= 0) kill(p, 'Impaled.'); }
+  }
 
   if (p.infected) {
     p.infectT += dt;

@@ -29,6 +29,11 @@ export const TILE_DEFS = {
   door:       { portal: true, hp: 150, name: 'door',     barFrom: 'inside', harvest: { tool: 'axe', hits: 3, drop: 'door' } },
   shutter:    { portal: true, hp: 60,  name: 'shutter',  barFrom: 'inside', climbThrough: true, harvest: { tool: 'axe', hits: 2, drop: 'shutter' } },
   hatch:      { portal: true, hp: 120, name: 'trapdoor', barFrom: 'above',  climbableWhenOpen: true, harvest: { tool: 'axe', hits: 3, drop: 'hatch' } },
+
+  // Proves the `contact` hook (DESIGN §5.3/§8): a rule-ful block that's still just a row plus
+  // one predicate, checked once in the player's body step (see entities/player.js). Not placed
+  // by the generator yet — a future dungeon/trap tile.
+  spikes:     { solid: false, opaque: false, hp: Infinity, color: '#8a3b3b', edge: 'rgba(0,0,0,0.3)', contact: { dmg: 15, cooldown: 0.6 } },
 };
 
 export const TOOL_NAMES = { shovel: 'a shovel', axe: 'an axe', pick: 'a pickaxe', any: 'anything' };
@@ -61,6 +66,9 @@ export function isClimbable(t) {
 }
 
 export const portalName = t => TILE_DEFS[t.kind].name || t.kind;
+// The `contact` def for a tile, if any (e.g. spikes' { dmg, cooldown }) — a generic hazard hook
+// any body's update step can check without knowing which tile kinds use it.
+export const contactDamage = t => t ? TILE_DEFS[t.kind].contact ?? null : null;
 
 // A tile a zombie can chew through: a portal, or anything with finite hp. Earth (dirt/grass/
 // stone/bedrock) and trees carry hp: Infinity specifically so zombies can't dig or fell them —

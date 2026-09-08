@@ -155,8 +155,15 @@ variety). Crafting turns 1 log into 4 **planks**, and every structure recipe cos
 logs directly. That multiplier — not more or taller trees — is what makes one tree's wood
 worth building with; see §7.3.
 
+**`contact` hook**: a tile can define `contact: { dmg, cooldown }` (`spikes` is the one
+example so far — non-solid, so a body sinks onto whatever's beneath it and keeps taking hits).
+`contactDamage(tile)` reads it; `updatePlayer` samples the tile at the player's feet once a
+frame against the player's own cooldown timer — no infection roll, this isn't a bite. This is
+the block vector's "row + one predicate" case from §16: adding a new hazard tile needs no new
+system, just a def and a value in an existing check.
+
 Future: `chest`, `workbench`, `bed`, `well`, `torch` (decorative until lighting exists),
-`fence` (solid, not opaque — the first split), `spikes`.
+`fence` (solid, not opaque — the first split).
 
 ### 5.4 Portals: doors, shutters, trapdoors
 
@@ -463,7 +470,9 @@ with methods in the state tree, no closures).
 ```
 index.html                 page shell, CSS tokens, canvas + DOM UI mounts
 devserver.mjs               local dev server (sends Cache-Control: no-store — see §17 note)
-src/main.js                 bootstrap + RAF loop
+src/main.js                 bootstrap + RAF loop; calls validateContent() before anything else
+src/validate.js              boot-time checks over TILE_DEFS/ITEMS/CRAFTS; throws with every
+                              problem found, not just the first
 src/config.js                every tunable constant, grouped, exported
 src/game.js                  creates the state object; runs systems in order
 src/input.js                 keyboard/mouse → per-frame action flags + mouse world coords

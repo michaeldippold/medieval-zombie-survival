@@ -34,6 +34,10 @@ function paintBack(ctx, x, y, back, c) {
   else if (back === 'earth') { ctx.fillStyle = COLORS.earthBack; ctx.fillRect(x, y, T, T); }
 }
 
+// Whether `kind` has a dedicated painter (as opposed to falling back to paintPlain). Used by
+// validate.js at boot to confirm every tile kind can actually be drawn one way or the other.
+export const hasPainter = kind => kind in PAINTERS;
+
 // Only blocks with a distinctive look get a painter. Everything else uses paintPlain via its def.
 const PAINTERS = {
   air() {},

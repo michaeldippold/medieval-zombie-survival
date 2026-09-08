@@ -129,19 +129,32 @@ one row plus one predicate. Do after 2b (crafting redo) so the item model is set
 
 ### Blocks (one row for a plain block, row + painter for a distinctive one)
 - [x] Default painter from the def (`color`, `cap`, `edge`); dedicated painters only for looks
-- [ ] Load-time validation of `TILE_DEFS`: every non-air kind has `color` or a painter; every
-      `harvest.drop` is a known item; portals have `name` and `barFrom`. Throw on boot, not in play.
-- [ ] `contact` hook on defs (e.g. `spikes: { contact: { dmg: 10 } }`) checked once in the
-      player/zombie body step — the first rule-ful block type, added as data
-- [ ] Placeables derived from items (`ITEMS[id].places`), not a separate list — done in 2b step 3
+- [x] Load-time validation (`src/validate.js`, called once from `main.js`): every non-air kind
+      has `color` or a painter (`render/tiles.js` exports `hasPainter` for this), every
+      `harvest.drop` is a known item, portals have `name` and `barFrom`, every placeable item
+      has a `make()`, every recipe's `cost`/`gives` ids exist. Collects *all* problems into one
+      thrown message rather than stopping at the first. Verified it both passes clean on the
+      real content and correctly reports 4/4 injected problems (bad drop id, undrawable tile,
+      unknown recipe cost/gives ids) in a throwaway node run.
+- [x] `contact` hook: `TILE_DEFS[kind].contact = { dmg, cooldown }`, read by
+      `contactDamage(tile)` (world/tiles.js) and checked once in `updatePlayer` (sampled at the
+      feet, own cooldown, no infection roll — it's not a bite). Proved with a `spikes` tile
+      (non-solid, so you sink onto whatever's below and take repeat damage) — not placed by the
+      generator yet, just available. Zombie-side hazard interaction (walking zombies into a
+      spike trap) would reuse the same `contactDamage()` call from `updateZombies`; not wired in
+      this pass, noted here rather than silently skipped.
+- [x] Placeables derived directly from items: a placeable's own `make(insideDir)` on `ITEMS[id]`
+      *is* the tile constructor (no separate `places` field/lookup table needed — simpler than
+      planned, same effect)
 - [ ] `docs/ADDING.md`: the three checklists (block / craft / entity), each a numbered list of
       files touched, with a worked example. Keep it to one page.
 
 ### Crafts (one row per recipe)
-- [ ] Recipe validation at boot: every `cost` and `gives` id exists in `ITEMS`
+- [x] Recipe validation at boot (part of `validate.js` above)
 - [ ] Optional `station` on a recipe; the Craft palette filters by stations within reach.
       No station = craftable anywhere (arrows). Workbench is the first station (Phase 4).
-- [ ] Recipe `icon` defaults to the `gives` item's icon
+- [x] Recipe icon defaults to its `gives` item's icon (`paintCraftIcon` in interactions.js —
+      tile via `paintTile` if the item is placeable, else `paintItemIcon`)
 
 ### Entities (create + decide + painter per kind)
 - [ ] Split `zombie.js`: `entities/body.js` owns gravity, ladder overlap, `moveBody`, stagger
