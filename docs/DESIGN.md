@@ -118,8 +118,16 @@ Why medieval (decided, not up for relitigation without new information):
 ### 5.1 Tile grid
 
 The world is a 2D array `grid[row][col]` of tile objects or `null` (air). Tile size is
-**40 px**. The starter world is 60×14; the first real world will be ~200×48 with the
-surface around row 12 and bedrock at the bottom.
+**40 px** today and becomes **32 px** (16 px art at 2×) in the scale phase (§6). The current
+world is 120×40; the first real world will be a few hundred columns wide with sky above the
+mountains and bedrock at the bottom (§5.6).
+
+**What a tile is, relative to a person** (decided 2026-09-08): waist height. The player and
+zombies are **two tiles tall**. This is the Terraria/Starbound proportion, and it was chosen
+because it is the same decision as "can furniture be bigger than one block": with a one-tall
+person the tile is a person-unit and every object is person-sized; with a two-tall person a
+chest is a chest, a bed is 2×1, a fireplace is 2×3 and deserves the detail, rooms are 4–5 tall
+with headroom, and a 16×32 sprite has a silhouette. See §6 for what it costs.
 
 Two independent questions are asked of every tile, and the answers depend on the tile's
 *state*, not just its kind:
@@ -295,6 +303,14 @@ Nothing in the runtime may assume a particular layout.
 
 **Planned for 1.0 (§1.1):**
 
+- **Pause before building this phase.** Biome selection, how high mountains go, how to keep
+  hills from repeating (Minecraft's layered noise vs. hand-tuned features), world width, and
+  what happens off-screen (entity tick radius, spawn margin, the far map frozen until you
+  arrive) are a design conversation, not a checklist. Have it before writing worldgen v2.
+- **Size.** A world you can walk across in a few in-game days: hundreds of columns, not
+  Terraria's thousands. At that size a flat array is fine and chunking is unnecessary; what
+  scales with width is *simulation*, not storage — entities tick only within a radius of the
+  player, spawns happen just beyond it.
 - **A seed is the world's name.** The new-game screen takes a seed (number or string, hashed);
   "random" fills one in. Only worldgen draws from the seeded RNG — runtime randomness (zombie
   wander, drops) uses `Math.random()` and needn't be reproducible. Two players with the same
@@ -306,65 +322,118 @@ Nothing in the runtime may assume a particular layout.
   upward to leave sky over the peaks (`ROWS` ~64, surface ~row 36); the camera already follows
   Y. Vision's flood over open sky gets bigger, which is when the vision cache stops being
   optional (§9, §16).
-- **Biomes** are per-column stretches selected from the seed: *meadow* (trees, animals),
-  *forest* (dense wide trees, less light), *rocky* (mounds, exposed stone, mountains), *ruins*
-  (more prefabs, more zombies). A biome is a table row: tree density, mound chance, prefab
-  pool, spawn table. Not a new system — a set of knobs worldgen already has.
-- **Prefabs** are painted, not coded. A prefab is a JSON file worldgen stamps onto the surface:
+- **Biomes are climate, and there are no seasons** (decided 2026-09-08). A biome is a
+  per-column stretch selected from the seed and it is *always* its weather: meadow is always
+  summer, the snow biome is always deep winter, a desert (if ever) is always hot. The day
+  counter is the game's only clock; zombie pressure is what changes with time, and a second
+  clock would multiply every biome's art by four for nothing. Consequences: a *cold* moodle
+  in snow that a fireplace answers (the fireplace becomes survival, not decor); and water is
+  deferred for a real reason — the first two biomes, **meadow** and **mountain**, have none.
+  Water arrives with a lake/swamp biome when flowing water is worth building. A biome is a
+  table row: terrain-by-depth (grass/dirt/stone vs stone from the top), tree density, mound
+  chance, height range, prefab pool, spawn table, ambient palette. Not a new system — knobs
+  worldgen already has.
+
+  **A biome earns its place or it isn't added** (rule, 2026-09-08). A biome that's a
+  one-minute day trip before you go home to the warm plains is not worth the art. Every biome
+  row must fill three columns, and if any is blank the biome waits:
+
+  | | the cost of being there | how you pay it *there* | what you can only get there |
+  |---|---|---|---|
+  | meadow | the most zombies — the population is where the food is | walls, the baseline game | animals, farmland (post-1.0), most prefabs |
+  | mountain | no trees, falls, thin cover | caves are free rooms; stone is everywhere | iron ore near the surface, goats, the only place for a high fortress |
+  | snow (later) | the cold moodle drains you outside | snow blocks — a cheap wall tier, igloos; furs → a warm cloak that also works everywhere; a fireplace | pine wood, furs, ice; **zombies are sluggish in the cold** — the real reason to *live* there |
+
+  The third column is what makes a trip meaningful; the second is what makes staying possible;
+  the first is what makes the choice a choice. Needs (§7.4) push you between biomes over time —
+  food runs out where you are — but they can't be the only reason to go somewhere.
+- **Prefabs are built in the game, not painted** (decided 2026-09-08). In creative mode
+  (§11.1) you build a hut out of real tiles, walk around in it, then drag a rectangle and
+  export. The exporter walks both grids and writes:
 
   ```json
   {
-    "name": "peasant_hut", "w": 9, "h": 6, "anchor": 5,
-    "tiles": [ ".........", "wwwwwwwww", "w.......w", "w.......w", "w.......w", "dwwwwwwww" ],
-    "back":  [ ".........", ".ppppppp.", ".ppppppp.", ".ppppppp.", ".ppppppp.", "........." ],
-    "legend": { "w": "wall", "d": { "kind": "door", "insideDir": 1 }, "p": "bg_plaster", "T": "torch" },
-    "markers": [ { "c": 4, "r": 4, "type": "loot", "table": "hut" }, { "c": 2, "r": 4, "type": "spawn", "kind": "zombie" } ]
+    "name": "peasant_hut", "w": 9, "h": 7,
+    "ground": [5, 5, 5, 5, 5, 5, 5, 5, 5],
+    "tiles": [ "...", "..." ], "back": [ "...", "..." ],
+    "legend": { "w": "wall", "d": { "kind": "door", "insideDir": 1 }, "p": "bg_plank", "C": { "kind": "chest", "inv": [] } },
+    "markers": [ { "c": 2, "r": 4, "type": "spawn", "kind": "zombie" } ]
   }
   ```
 
-  `tiles` is the foreground grid, `back` the background grid (§5.7), both as rows of legend
-  characters (`.` = nothing). `anchor` is the row that sits on the surface; worldgen flattens
-  the ground under the footprint and refuses the spot if it can't. A legend entry is either a
-  tile kind or a full `makeTile` extra. Markers are things the stamp can't express as a tile:
-  loot (a container filled from a named table), spawns, the player start. **This format is the
-  contract with the building-painting tool** — the tool emits exactly this; worldgen reads
-  exactly this; nothing else needs to know a prefab exists. First set: peasant hut, lumber
-  mill (logs, an axe), inn (beds, food, the biggest building), well, ruin (broken walls, loot,
-  zombies inside). The current hand-coded house becomes the first prefab file.
-- **Loot tables** are data too: `{ hut: [ { id: 'bread', n: [1,3], chance: 0.8 }, … ] }`.
+  The legend is generated from whatever kinds the rectangle contains. Tile state that matters
+  is kept (a door's inside direction, a shutter's open/closed, a chest's literal contents —
+  "the hut has an axe in the chest" is you putting an axe in the chest); damage is not.
+  Multi-cell things export as their anchor only.
+
+  **The ground line.** `ground[c]` is the row of the topmost *ground* cell in each column. A
+  creative-only placeable, `ground` (a hatched solid block meaning "this biome's terrain goes
+  here"), is how you sculpt it: place it like dirt, stand on it, build on it, dig a cellar
+  through it. Real dirt or stone you place stays dirt or stone. At stamp time, per column:
+  building cells are copied verbatim (including air you dug — a cellar interior is air with a
+  backwall, and it stays air); empty cells *above* the line become air; empty cells *below*
+  the line become the **biome's** terrain by depth, and so does everything under the
+  rectangle down to the world. A prefab never carries a material, so a stone cottage sits in
+  a mountain without dragging a dirt skirt along, and a bare dug cellar is made of whatever
+  the ground there is.
+
+  **Placement matches only the edges.** The world surface just left of the footprint must
+  equal `ground[0]`, and just right of it `ground[w-1]`, within a tile, with two columns of
+  smoothing outside. The interior is carved to the line regardless. So a level line is a
+  flatland building; a line three higher on the right is a hillside building that only ever
+  appears on a slope of that shape; a house built into a `ground` hill slots into hills. That
+  is the entire "spawns on matching terrain" system.
+
+  Markers (zombie spawn, player start) are creative-only placeables that draw as a ghost icon
+  in creative, never exist in survival, and become `markers` on export. **Stamp…** in
+  creative's right-click menu drops any saved prefab at the cursor, so the loop closes: build,
+  export, stamp three copies on a hillside, see if it reads as a village. Because there is no
+  other way to make a prefab, every prefab is guaranteed to be made of real tiles with real
+  placement rules.
+
+  First set: peasant hut, lumber mill (logs, an axe), inn (beds, food, the biggest building),
+  well, a cellar or two. The current hand-coded house becomes the first exported file.
+- **Variation** is two files (`hut_a`, `hut_b`) plus a **ruin pass**: the generator takes a
+  normal prefab and ages it — knocks out random wall tiles, leaves doors broken, spills a
+  chest onto the floor — so the same inn appears intact in one seed and gutted in another.
+- **Loot tables** come later, layered on top of literal chest contents:
+  `{ hut: [ { id: 'bread', n: [1,3], chance: 0.8 }, … ] }`.
 
 ### 5.7 The background layer (planned — the first 1.0 architecture piece)
 
 Today `back` is a paint tag on an air tile (`'plaster'`, `'earth'`). It becomes a second grid,
-`world.back[r][c]`, holding real tile objects *behind* the play plane:
+`world.back[r][c]`, holding real tile objects *behind* the play plane. **There are exactly two
+grids, and one thing of each per cell** (decided 2026-09-08; an earlier draft had a third
+"mount" grid — dropped, Terraria lives without it and so can we):
 
-- **Background walls** — `bg_plaster`, `bg_stone`, `bg_plank`, `bg_earth`. Placeable items;
-  what a room *looks like* from inside — "the background style of your house". Worldgen writes
-  `bg_earth` behind anything dug or caved underground and `bg_plaster` inside prefabs.
-- **Wall-mounted objects** — `torch`, `painting`, `banner`, `shelf`. They need a background
-  wall behind them (Terraria's rule). That rule is the whole reason to place background walls
-  in a room you already sealed, and the whole reason torches (§12.1) are something you *work
-  toward*: enclose, wall, mount, light.
+- **Background grid** — background walls: `bg_plaster`, `bg_plank`, `bg_stone`, `bg_earth`,
+  and `bg_window` (a wall that *draws* a window; fake 3D, no effect on vision). Placeable
+  items; "the background style of your house". Worldgen writes `bg_earth` behind anything dug
+  or caved underground and the prefab's own choice inside buildings.
+- **Foreground grid** — everything else, including furniture (§5.8) and things that hang on
+  walls. A `torch` or `painting` is foreground decoration with the placement rule
+  `needsWall` (a background wall must be behind it — Terraria's rule, and the whole reason to
+  place background walls in a room you already sealed: enclose, wall, mount, light). A bed or
+  chest has `needsFloor` (solid under its bottom row). A torch and a chest therefore can't
+  share a cell; the painting goes in the cell above the bed. Nobody has ever missed it.
 
 Rules:
 
-- The background layer **never** affects solidity, vision, zombies, or physics. It is only what
+- The background grid **never** affects solidity, vision, zombies, or physics. It is only what
   you see behind the play plane. `isSolid`/`isOpaque` never look at it.
 - A placeable item declares `layer: 'back'`; `placement.js` routes it into `world.back` instead
   of `world.grid`. `canPlaceAt` for a back item needs the foreground cell to be air or
-  decoration (trunk/leaf), and for a *mounted* item, a background wall already there. The ghost
-  and stamp flow is otherwise identical — the held item is still the mode.
-- Two things can occupy one background cell: a wall and a thing mounted on it. Store the wall
-  in `world.back` and the mounted object in `world.mount` (a third sparse grid), or store the
-  mount as a field on the wall tile — decide at build time; the sparse grid is cleaner for the
-  renderer and for `lights`.
-- Harvesting on an air cell hits the mount first, then the wall, each with its own `harvest`
-  and each dropping its own item. Removing a wall drops whatever was mounted on it.
+  decoration. Foreground placeables check their `needsWall` / `needsFloor` against the other
+  grid / the cell below. The ghost and stamp flow is otherwise identical — the held item is
+  still the mode.
+- Harvesting on a cell hits the foreground thing first (a torch), then the background wall;
+  each drops its own item.
 - `airAfter` writes into `world.back`, not onto the air tile; the `back` field on foreground
   tiles goes away. `isUnderground` keeps its meaning (natural earth backwall = `bg_earth`).
-- Rendering: `world.back` draws between sky and foreground; mounts draw on top of walls;
-  both are culled and cached the same way as the foreground.
-- Light (§12.1) collects emitters from mounts (torch) and the foreground (fireplace).
+- Draw order: sky → background grid → foreground grid → entities. Transparent pixels in a
+  foreground sprite show the background wall behind it; that is how a fireplace's opening or
+  a bed's legs let the plank wall through.
+- Light (§12.1) collects emitters from the foreground grid (torch, fireplace).
 
 The migration is mechanical (every `back:` in maps.js, tiles.js, renderer, vision) and should
 be one commit that changes no behaviour, followed by the commit that adds the first placeable
@@ -374,10 +443,13 @@ background wall and the torch.
 
 Furniture is a **foreground tile**, in the decoration tier (§5.3): non-solid, non-opaque,
 walk-through — a chest in a one-tile corridor must not be a wall, and a bed you can't stand in
-front of is useless. It occupies the cell (you can't build a wall through it), has modest hp,
-is harvested with an axe and drops itself. It's opened with the existing right-click context
-menu — "Open", "Sleep", "Cook…", "Drink" — so the interaction system gains nothing new. What
-is new is that some tiles carry **state beyond `{hp, dig, bars…}`** and some **tick**:
+front of is useless. Solidity stays a per-kind flag like any other block: a crate that should
+be stood on says `solid: true` and then behaves exactly like a wall (attackable, opaque).
+Furniture occupies the cell (you can't build a wall through it), has modest hp, is harvested
+with an axe and drops itself. It's used with the existing right-click context menu — the def
+lists its verbs, `actions: ['open']`, `['sleep']`, `['light', 'snuff']` — so the interaction
+system gains data, not code. What is new is that some tiles carry **state beyond `{hp, dig,
+bars…}`** and some **tick**:
 
 - **Containers** — `chest`, `barrel`, `crate`: `t.inv = createInventory(n)`. Opening one
   shows the inventory window with two grids (yours, theirs) and drag between them — the
@@ -400,11 +472,14 @@ is new is that some tiles carry **state beyond `{hp, dig, bars…}`** and some *
 `world.set` adds/removes membership by def. A new system `updateTiles(state, dt)` runs them
 in the update order — never a grid scan. `world.lights` (§12.1) is the same mechanism.
 
-**Multi-tile furniture** (bed 2×1, table 2×1, a big painting 2×2): one *anchor* cell carries
-the state; the other cells are `part` tiles `{ kind: 'part', of: idx }`. Interacting with or
-breaking a part resolves to its anchor. Every grid question (solid/opaque/hp) stays
-answerable per cell. Don't build this until the second multi-tile thing exists — a bed can
-start as one tile.
+**Multi-cell things** (a 2-tall door, a 2×1 bed, a 2×3 fireplace, a 2×2 painting): one
+*anchor* cell (bottom-left) carries the state; the other cells are `part` tiles
+`{ kind: 'part', of: idx }` that delegate every question to the anchor — `isSolid(part)` is
+`isSolid(anchor)`, so a 2-tall door opens as one thing (Minecraft's double-door pattern).
+Interacting with or breaking a part resolves to its anchor; harvesting drops one item. The
+anchor draws one `w×h`-tile sprite; parts draw nothing. Placement ghosts the whole footprint
+and `canPlaceAt` checks every cell. This is built in the scale phase (§6) because doors need
+it the day bodies become two tall — furniture gets it for free after.
 
 **Serialization** (§15): `inv` is plain data, `progress` a number; nothing here breaks the
 save rule, but `tickers`/`lights` are caches rebuilt on load, not saved.
@@ -429,10 +504,37 @@ save rule, but `tickers`/`lights` are caches rebuilt on load, not saved.
   you can actually reach; never infects (it's not a bite). Ladders and water (if ever) reset
   it. Mild on purpose: a reason to build stairs, not a way to die.
 
+### 6.1 The scale change: two-tall bodies (decided 2026-09-08, reverses the 1-tall ruling)
+
+The one-tall ruling bought one-tile tunnels and tiny sprites. Neither is worth the furnished
+home that 1.0 is built around (§5.1, §1.1). Done as its own early phase, before any prefab is
+exported or any art is drawn, while the house is still one function. What changes:
+
+- `TILE` 40 → 32; player ≈ 24×60, zombie ≈ 26×60 (16×32 art at 2×). The logical viewport
+  grows from 960×560 to **1280×720** — 40×22 tiles instead of 24×14 — or a two-tall player is
+  a seventh of the screen and the game feels like a phone. About eleven player-heights per
+  screen is the target. Px-based tunables (speeds, reach, sight) scale by 0.8 and get re-played.
+- **Doors and shutters are two tall** (anchor + part, §5.8). A one-tall *window* at head
+  height becomes something zombies can break for *sight* but not *entry*; only a two-tall
+  window is climb-through. That distinction didn't exist before and it's a good one.
+- **Tunnels are two tall.** Horizontal digging costs double; vertical shafts stay one wide.
+  Digging in gets slower, which was the worry about underground bases anyway.
+- **Step climbing** generalises from "one passable tile above the obstacle" to "the body fits
+  at the lifted position". Scrambling gets *more* natural: two tall is "climb your own height",
+  three is a real wall.
+- The house is rebuilt (rooms 4–5 tall, 2-tall door, loft). Wall recipes yield more so a room
+  costing twice the tiles doesn't cost twice the trees; holding left-click places in a line.
+- Entities are pixel rectangles, not tiles: a chicken can be 12×10 px, a cow 40×28 px. The
+  only tile-shaped constraint is fitting through the openings a thing needs to use.
+- Movement, physics, vision and every zombie rule are unchanged; they scale with the body.
+
 ## 7. The player
 
 ### 7.1 Movement
 See §6. Facing follows the mouse. The held item is drawn pointed at the mouse.
+
+**Hold-to-use** (planned): holding left-click repeats for tools (dig, chop, mine — Minecraft's
+rule) and for placeables (paint a line of blocks). Weapons stay one click per swing.
 
 ### 7.2 Health, injury, infection
 - HP 100. Zombie touch does 20 and knocks back; per-zombie cooldown 0.8 s.
@@ -670,6 +772,18 @@ Wounds are drawn as notches so remaining HP is readable without a bar.
 - **The loop**: gather outside (exposed) → craft inside (sealed) → build (changes enclosure)
   → furnish (changes nothing but you).
 
+### 11.1 Creative mode (planned, early)
+
+A flag on the state, `state.creative`: no zombies spawn and existing ones are cleared,
+placing never consumes stock, harvesting is instant, the needs clock is off, a key toggles
+noclip so you can hover while building a roof. It exists for three reasons: testing anything
+that isn't combat without dying first, building prefabs for export (§5.6), and the creative-
+only placeables — `ground` (the biome-terrain stand-in), zombie-spawn and player-start
+markers — which draw as hatched/ghost tiles in creative and never exist in survival. Its
+right-click menu adds **Export prefab…** (drag a rectangle) and **Stamp…** (drop a saved
+prefab at the cursor). Entered from the title/pause menu or a URL flag; a creative world is
+labelled and never counts for days survived.
+
 ## 12. Time
 
 - A day is ~10 real minutes. The sky and ambient overlay ramp through dawn/day/dusk/night.
@@ -824,13 +938,27 @@ because zombies decide using this frame's visibility.
 
 **Tunables** live in `config.js` only. A number in a system file is a bug.
 
-**Planned files (1.0, see §16.1):** `src/world/back.js` (background/mount grids and their
-queries), `src/systems/time.js` (clock, day counter), `src/systems/light.js` (light map),
-`src/systems/tiles.js` (`updateTiles` over `world.tickers`), `src/systems/needs.js`,
-`src/systems/pressure.js` (spawning curve), `src/entities/index.js` (registry),
-`src/entities/body.js`, `src/entities/chicken.js`, `src/world/prefabs/*.json` +
-`src/world/prefab.js` (stamp), `src/world/loot.js`, `src/save.js`, `src/ui/containerPanel.js`
-(two-grid inventory), `src/ui/moodles.js`, `src/ui/title.js`, `src/ui/death.js`.
+**Planned files (1.0, see §16.1):** `src/world/back.js` (background grid and its queries),
+`src/world/multi.js` (anchor/part helpers), `src/systems/time.js` (clock, day counter),
+`src/systems/light.js` (light map), `src/systems/tiles.js` (`updateTiles` over
+`world.tickers`), `src/systems/needs.js`, `src/systems/pressure.js` (spawning curve),
+`src/entities/index.js` (registry), `src/entities/body.js`, `src/entities/chicken.js`,
+`src/creative.js` (the flag, export/stamp), `prefabs/*.json` + `src/world/prefab.js` (stamp,
+ground line, edge matching), `src/world/loot.js`, `src/save.js`, `src/render/assets.js`
+(asset manifest → sprites, flat-painter fallback), `src/ui/containerPanel.js` (two-grid
+inventory), `src/ui/moodles.js`, `src/ui/title.js`, `src/ui/death.js`.
+
+**The editor lives in this repo** (decided 2026-09-08): `tools/editor/` is the pixel editor,
+moved in from `zombie-tile-editor`, served by the same `devserver.mjs`, which gains a
+`POST /assets` handler that writes PNGs and `assets/manifest.json` straight into the repo.
+Draw, save, reload the game, it's there — no copying files by hand. The game's
+`render/assets.js` loads the manifest at boot and paints a sprite for any kind that has one,
+falling back to today's flat painters for the rest, so art arrives one tile at a time. It is
+the **only** external tool: assets of any `w×h` tiles at 16 px each (blocks 1×1, background
+walls 1×1, a bed 2×1, a fireplace 2×3, a character 1×2), categories, create/rename/duplicate/
+delete, gridlines at cell boundaries, transparency, and a proportion preview that shows the
+asset beside a two-tall mannequin over a sample background wall. Character animation frames
+come later in the same tool. GitHub Pages hosts it read-only.
 
 **Growth vectors.** New content arrives along three data-driven paths — a block is a row in
 `TILE_DEFS` (plus a painter only if it has a distinctive look), a craft is a row in `CRAFTS`,
@@ -844,34 +972,37 @@ The 1.0 list (§1.1) is mostly content, but three items are architecture and eve
 sits on them. Build in this order; each line depends on the ones above it.
 
 ```
+scale (§6.1): 2-tall bodies, 32px tiles, 1280×720, anchor/part ── first, before any art or prefab
+editor + asset pipeline (§16) ── parallel track; art starts landing while systems are built
 entity registry (2c)  ─┬─► animals ──► food ──► needs ──► moodles
                        └─► NPCs (post-1.0), zombie variants (post-1.0)
-background layer (§5.7) ──► torches ──► day/night + lighting (§12.1) ──► day counter = score
-                        └─► decor, house styling
-stateful tiles (§5.8)  ─┬─► chest (two-grid panel) ──► loot tables ──► prefabs (§5.6)
+background layer (§5.7) ─┬─► torches ──► day/night + lighting (§12.1) ──► day counter = score
+                         └─► creative mode + prefab export/stamp (§11.1, §5.6) ── early, so
+                             buildings get made while systems are built
+stateful tiles (§5.8)  ─┬─► chest (two-grid panel) ──► prefab loot
                        ├─► bed ──► sleep/fatigue
                        ├─► workbench/furnace stations ──► tiers (§13) ──► durability/shield (§7.6)
                        └─► save/load (§15) — built right here, kept green after
 pressure (§8.6) — needs day counter; tuned last because everything above changes it
-world (§5.6) — seed UI, height, biomes, prefab stamping; last because prefabs need the
-               tile vocabulary (background walls, furniture, chests) to exist first
+world (§5.6) — pause and talk first; seed UI, height, biomes, prefab stamping
 menus, death screen, first-time hints (§14) — the wrapper; last
 ```
 
-The three architecture pieces are each one focused commit with a proving feature: the
-registry proves itself with a chicken, the background layer with a torch on plaster, stateful
-tiles with a chest you can open. Nothing else in 1.0 needs new plumbing — it is rows in
+The architecture pieces are each one focused commit with a proving feature: scale proves
+itself with the rebuilt house and a 2-tall door, the registry with a chicken, the background
+layer with a torch on plaster, stateful tiles with a chest you can open, creative with an
+exported hut stamped somewhere else. Nothing else in 1.0 needs new plumbing — it is rows in
 tables and `(state, dt)` functions in the update order.
 
 ## 17. Open questions
 
 - Should zombies stack (stand on each other) to reach upstairs shutters? Fun, horrifying,
   but it makes every second storey reachable. Leaning no until walls have tiers.
-- ~~Two-tile-tall player?~~ **Resolved 2026-09-08: no, and closed for good.** The prefab
-  painting tool is being built now and every building it produces bakes in door height,
-  ceiling height and corridor height. Changing the player's size after that costs every
-  painted building. One-tile-tall stays; it's also what makes one-tile tunnels and the
-  ladder/hatch/loft layouts work. Doors stay 1 tall; rooms can be any height.
+- ~~Two-tile-tall player?~~ **Resolved 2026-09-08: yes, two tall** (§5.1, §6.1). Closed
+  earlier the same day as "no" on the grounds that prefabs would bake in door heights — the
+  right constraint but the wrong conclusion. The real basis is "what is a tile relative to a
+  person", and that is the same question as "can furniture be bigger than a block". Decided
+  before any prefab or art exists, which is the only time it could be.
 - Rope (a ladder you can pull up) vs trapdoor as the loft defence. Both, probably.
 - Cure or no cure. (Post-1.0 either way.)
 - Furniture and zombies: furniture is decoration-tier (non-solid, §5.8) so it can never be a
@@ -888,5 +1019,8 @@ tables and `(state, dt)` functions in the update order.
   on them (§5.7). Never solid, never opaque.
 - **Stateful tile / ticker** — a foreground tile carrying an inventory or a timer, updated
   from `world.tickers` (§5.8).
-- **Prefab** — a painted building stamped by worldgen from JSON (§5.6).
+- **Prefab** — a building built in creative, exported to JSON, stamped by worldgen (§5.6).
+- **Ground line** — a prefab's per-column top-of-terrain row; sculpted with the creative
+  `ground` block; matched at the edges for placement (§5.6).
+- **Anchor / part** — the cells of a multi-cell thing; parts delegate to the anchor (§5.8).
 - **Moodle** — a status icon standing in for a needs meter (§14).
