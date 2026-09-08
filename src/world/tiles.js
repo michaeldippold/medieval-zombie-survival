@@ -22,9 +22,18 @@ import { PORTAL } from '../config.js';
 //                                              tier whose entire purpose is to be a barrier
 // A placed log is decoration (item 'log' makes a 'trunk' tile) — a felled tree put back down
 // is still a tree, not a wall. A real wall is the separate, crafted `wall` item.
+//
+// `placedHp`: terrain is infinite-hp (un-attackable) as the natural, contiguous earth a
+// tunnel is dug into or an underground base is sealed by ("zombies cannot dig; earth is the
+// strongest wall"). A tile *placed* from an item is a different thing — a block someone set
+// down, not a mass of rock with no path through it — so placement.js gives it this much
+// finite hp instead, letting zombies claw through a stacked-dirt "wall" the way they would any
+// other flimsy barrier. Without this, dirt (the one directly-placeable terrain item, no
+// crafting required) stacked 3 tall is a free, permanent, un-scrambleable, un-attackable
+// fortress — worse than any crafted wall — which is exactly backwards.
 export const TILE_DEFS = {
   air:        { solid: false, opaque: false },
-  dirt:       { solid: true,  opaque: true, hp: Infinity, color: '#7a4f2a', harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
+  dirt:       { solid: true,  opaque: true, hp: Infinity, placedHp: 40, color: '#7a4f2a', harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
   grass:      { solid: true,  opaque: true, hp: Infinity, harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
   stone:      { solid: true,  opaque: true, hp: Infinity, color: '#8a8d93', edge: 'rgba(0,0,0,0.22)', harvest: { tool: 'pick', hits: 6, drop: 'stone', perHit: true } },
   bedrock:    { solid: true,  opaque: true, hp: Infinity, color: '#2b2d31' },
@@ -50,6 +59,15 @@ export function makeTile(kind, extra = {}) {
   const def = TILE_DEFS[kind];
   if (!def) throw new Error(`unknown tile kind: ${kind}`);
   return { kind, hp: def.hp ?? 0, dig: 0, bars: 0, barHp: PORTAL.BAR_HP, open: false, broken: false, insideDir: 0, back: null, ...extra };
+}
+
+// Called once, right after a placeable item builds its tile (placement.js). Overrides hp for
+// kinds with a `placedHp` (currently just dirt) so a placed instance is attackable even though
+// the natural version of the same kind is not. A no-op for every other tile.
+export function applyPlacedHp(tile) {
+  const placedHp = TILE_DEFS[tile.kind].placedHp;
+  if (placedHp != null) { tile.hp = placedHp; tile.maxHp = placedHp; }
+  return tile;
 }
 
 export const defOf = t => TILE_DEFS[t.kind];
@@ -78,20 +96,22 @@ export const portalName = t => TILE_DEFS[t.kind].name || t.kind;
 // any body's update step can check without knowing which tile kinds use it.
 export const contactDamage = t => t ? TILE_DEFS[t.kind].contact ?? null : null;
 
-// A tile a zombie can chew through: a portal, or anything with finite hp. Earth (dirt/grass/
-// stone/bedrock) and trees carry hp: Infinity specifically so zombies can't dig or fell them —
-// that's the whole rule, no separate flag needed.
+// A tile a zombie can chew through: a portal, or anything with finite *current* hp. Checking
+// the instance (t.hp), not the def, is what lets a placed dirt block (finite, via placedHp)
+// differ from the natural dirt around it (still Infinity) while sharing one tile kind.
 export function canZombieDamage(t) {
   if (!t) return false;
-  const d = TILE_DEFS[t.kind];
-  return !!d.portal || Number.isFinite(d.hp);
+  return !!TILE_DEFS[t.kind].portal || Number.isFinite(t.hp);
 }
 export const maxHp = t => TILE_DEFS[t.kind].hp ?? 0;
 
-// Combined "how broken does this look" for painters: zombie damage or player digging, whichever is further along.
+// Combined "how broken does this look" for painters: zombie damage or player digging, whichever
+// is further along. Uses the instance's own starting hp (t.maxHp, set at placement time for a
+// tile whose hp doesn't match its def — see placedHp above) when present, else the def's.
 export function integrity(t) {
   const d = TILE_DEFS[t.kind];
-  const byHp = Number.isFinite(d.hp) && d.hp > 0 ? t.hp / d.hp : 1;
+  const startHp = t.maxHp ?? d.hp;
+  const byHp = Number.isFinite(t.hp) && startHp > 0 ? t.hp / startHp : 1;
   const byDig = d.harvest ? 1 - t.dig / d.harvest.hits : 1;
   return Math.min(byHp, byDig);
 }

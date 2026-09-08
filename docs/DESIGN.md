@@ -164,6 +164,24 @@ no inconsistency to resolve there; the earlier "natural vs. built" framing was s
 wrong axis. A future block picks its tier and the two booleans follow — see §16's growth-vector
 note.
 
+**Terrain's solidity is fixed, but its *attackability* is not — and that's a second, narrower
+axis, not a reopening of the first.** A stack of dirt has always been solid and un-scrambleable
+at 3+ tall — correct for terrain, since the whole point of "zombies cannot dig; earth is the
+strongest wall" (§7.4) is that a tunnel or sealed basement is surrounded by continuous,
+un-worked earth with no path through it. But dirt is also the one terrain material directly
+placeable with no crafting step, and a freshly *placed* dirt block is not that — it's a single
+block someone carried over and set down, sitting on open ground with nothing else backing it.
+Left un-attackable, three stacked dirt blocks are a permanent, zero-cost, un-scrambleable
+fortress wall — strictly better than any crafted structure, for free, day one. So: a tile's
+`kind` fixes its `solid`/`opaque` tier forever (§5.3 above), but a tile *instance* placed from
+an item with a `placedHp` (dirt only, so far — raw stone isn't directly placeable; you must
+craft it into `wall_stone`, already a proper attackable structure) gets finite hp right then,
+checked via the instance (`t.hp`), not the kind's default. Natural dirt — including the walls
+of a pit you dug, or the earth around an underground base — is never touched by this and stays
+permanently un-attackable; only a block that came from the hotbar is flimsy. `placedHp: 40` is
+deliberately weaker than even a shutter (60), so a raw-dirt barricade reads as "a stopgap," not
+"a wall" — real fortification still means crafting one.
+
 **Wood yield**: a trunk tile fells 1:1 into a `log` (placeable straight back as decoration — a
 bark block for background variety, never a wall). Crafting turns 1 log into 4 **planks**, and
 every structure recipe costs planks, not logs directly. That multiplier — not more or taller

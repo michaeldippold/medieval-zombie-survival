@@ -6,7 +6,7 @@
 import { TILE, PLAYER } from './config.js';
 import { ITEMS } from './items.js';
 import { heldId, take } from './inventory.js';
-import { isAir } from './world/tiles.js';
+import { isAir, applyPlacedHp } from './world/tiles.js';
 import { overlap } from './physics.js';
 import { showHint } from './ui/hints.js';
 
@@ -36,7 +36,7 @@ export function updatePlacement(state) {
   if (!input.actions.use) return;
   if (!check.ok) { showHint(state, check.why); return; }
   const insideDir = Math.sign(p.x + p.w / 2 - (c * TILE + TILE / 2)) || 1;
-  const tile = item.make(insideDir);
+  const tile = applyPlacedHp(item.make(insideDir));
   tile.back = world.get(c, r)?.back ?? null;
   world.set(c, r, tile);
   take(state.inventory, { [id]: 1 });

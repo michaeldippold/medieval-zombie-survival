@@ -72,6 +72,13 @@ The first full loop: get resources → build a house → don't die.
       a zombie beelining into one got permanently stuck, and others queued up behind it, for
       free (the player didn't build that wall). Mounds are now a uniform 2 tall everywhere, so
       they're always the "hill" case. Verified: generated map's tallest surface stone stack is 2.
+- [x] Playtest fix (real exploit): 3 stacked **placed** dirt blocks were a free, permanent,
+      un-attackable, un-scrambleable fortress wall — no crafting, no recipe, better than any
+      structure. Placed dirt now gets finite hp (`TILE_DEFS.dirt.placedHp`, applied by
+      `applyPlacedHp()`) and is zombie-attackable via its own instance hp; natural/dug dirt is
+      untouched and still permanently safe. See DESIGN §5.3's "attackability is a second axis"
+      note. Verified both directions in node: natural 3-tall dirt never breaks, placed 3-tall
+      dirt does.
 - [x] Zombies attack timber/stone walls: `canZombieDamage(t)` is true for any tile with finite hp (or a portal) — earth/stone/trees stay Infinity, so this fell out of the existing hp field with no new flag. A broken wall/floor turns to air (no drop; that's zombie loss, not player harvest).
 - [x] Fixed a landing bug where scrambling only changed Y, leaving the zombie floating one column short of the obstacle with nothing to stand on — it would fall right back down and restart the climb forever. Landing now also snaps X into the obstacle's column.
 - [ ] Played: fell trees, build a hut with a door, seal it, survive; dig a basement, cap it, confirm sealed
@@ -277,6 +284,7 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
 - 2026-09-07 — Wood yield in 2D: log → 4 planks at the crafting step, not per-hit trunks. Trunks stay 1 block = 1 log so bark blocks are real, placeable, and cost a full log. *(Superseded 2026-09-08: a placed log block is decoration, not a solid wall — see the next entry and DESIGN §5.3.)*
 - 2026-09-08 — Solidity is fixed per tile kind by what the kind is for (terrain / decoration / structure), never by natural-vs-placed origin. A placed log stays decoration (non-solid) exactly like a growing tree; only crafted `wall`/`wall_stone`/etc. are ever a barrier. Triggered by a playtest report: felling a tree and placing the bark blocks back turned it into a free wall.
 - 2026-09-08 — Natural terrain features must never create an un-scrambleable (3+ tall), un-attackable chokepoint the player didn't build — that's free protection from map geometry. Stone mounds capped at a uniform 2 tall for this reason; scrambling itself was fixed to visibly climb (interpolated y) instead of stalling then teleporting.
+- 2026-09-08 — Closed a real exploit: dirt is the one terrain material placeable with no crafting step, terrain is always solid, and 3+ tall is un-scrambleable — so 3 stacked dirt blocks were a free, permanent, un-attackable fortress, stronger than any crafted wall. Fix: a *placed* dirt tile gets finite hp (`placedHp: 40` in TILE_DEFS, applied by `applyPlacedHp()` in placement.js) and becomes zombie-attackable via the instance's own hp (`canZombieDamage` now checks `t.hp`, not the kind's default `d.hp`) — natural/dug dirt is untouched and stays permanently safe (pit walls, underground bases). This is a second axis (attackability) layered on top of the fixed solidity tiers, not a reopening of that ruling — solid/opaque still never depends on origin; only "can a zombie eventually break it" does, and only for the one terrain item with no recipe gate. Verified in node: natural 3-tall dirt holds forever, placed 3-tall dirt gets broken through.
 - 2026-09-08 — Zombie wall-damage needed no new flag: `canZombieDamage(t)` is just "finite hp or a portal" — the same `hp: Infinity` that already marks earth/stone/trees as un-diggable also marks them as un-attackable by zombies.
 - 2026-09-08 — Phase 2b (everything is an item) shipped. `state.held` changed meaning from an
   item id string to a hotbar slot index — every read site now resolves it via `heldId()`. Watch
