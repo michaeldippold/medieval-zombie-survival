@@ -55,6 +55,15 @@ export function isClimbable(t) {
 }
 
 export const portalName = t => TILE_DEFS[t.kind].name || t.kind;
+
+// A tile a zombie can chew through: a portal, or anything with finite hp. Earth (dirt/grass/
+// stone/bedrock) and trees carry hp: Infinity specifically so zombies can't dig or fell them —
+// that's the whole rule, no separate flag needed.
+export function canZombieDamage(t) {
+  if (!t) return false;
+  const d = TILE_DEFS[t.kind];
+  return !!d.portal || Number.isFinite(d.hp);
+}
 export const maxHp = t => TILE_DEFS[t.kind].hp ?? 0;
 
 // Combined "how broken does this look" for painters: zombie damage or player digging, whichever is further along.

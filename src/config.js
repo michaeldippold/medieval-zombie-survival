@@ -29,6 +29,7 @@ export const ZOMBIE = {
   STAGGER: 0.22, STAGGER_SPEED: 160,
   DEATH_DUR: 0.3, CORPSE_LINGER: 2.5, CORPSE_FADE: 1.0,
   WANDER_MIN: 0.8, WANDER_VAR: 2.2,
+  SCRAMBLE_MAX: 2, SCRAMBLE_TIME: 5,   // a stack this tall (in tiles) of non-attackable blocks can be scrambled over, this slowly; taller is impossible
 };
 
 export const ATTENTION = { RANGE: 900, LINGER: 5 };

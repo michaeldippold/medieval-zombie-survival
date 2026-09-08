@@ -38,7 +38,8 @@ export function drawPlayer(ctx, p, aim, held) {
 }
 
 export function drawZombie(ctx, e) {
-  const lx = e.lunge > 0 ? e.dir * 6 * Math.sin((e.lunge / ZOMBIE.LUNGE) * Math.PI) : 0;
+  const lx = e.scramble ? Math.sin(e.scramble.t * 22) * 2                            // clinging to the wall, scrabbling
+    : e.lunge > 0 ? e.dir * 6 * Math.sin((e.lunge / ZOMBIE.LUNGE) * Math.PI) : 0;
   if (e.death > 0) {                                   // death pop: squash and drain to grey
     const k = e.death / ZOMBIE.DEATH_DUR, bump = Math.sin(k * Math.PI);
     ctx.save(); ctx.translate(e.x + e.w / 2, e.y + e.h); ctx.scale(1 + 0.45 * bump, 1 - 0.35 * bump);
@@ -62,6 +63,13 @@ export function drawZombie(ctx, e) {
   ctx.fillRect(eyeX, e.y + 9, 4, 4); ctx.fillRect(eyeX + 6, e.y + 9, 4, 4);
   ctx.fillStyle = COLORS.wound;
   for (let i = 0; i < ZOMBIE.HP - e.hp; i++) ctx.fillRect(e.x + lx + 4 + i * 8, e.y + e.h - 8, 5, 4);
+  if (e.scramble) {                                     // claw marks toward the ledge it's fighting for
+    ctx.strokeStyle = 'rgba(20,20,20,0.6)'; ctx.lineWidth = 1.5;
+    const cx = e.x + lx + (e.dir >= 0 ? e.w - 4 : 4), sway = Math.sin(e.scramble.t * 22) * 3;
+    ctx.beginPath();
+    for (const dy of [-4, 2]) { ctx.moveTo(cx - 5 + sway, e.y + dy); ctx.lineTo(cx + 5 + sway, e.y + dy - 3); }
+    ctx.stroke();
+  }
   if (e.sees) { ctx.fillStyle = COLORS.alert; ctx.font = 'bold 14px "IBM Plex Mono", monospace'; ctx.fillText('!', e.x + e.w / 2 - 3, e.y - 6); }
 }
 

@@ -1,7 +1,7 @@
 // Zombie AI and collision rules. See DESIGN §8.
 import { TILE, PHYSICS, ZOMBIE, ATTENTION, COLORS } from '../config.js';
 import { moveBody, overlap, onClimbable, tryClimb } from '../physics.js';
-import { isPortal, isSolid, damageTile } from '../world/tiles.js';
+import { isPortal, isSolid, damageTile, canZombieDamage, airAfter } from '../world/tiles.js';
 import { hurtPlayer } from './player.js';
 
 let paletteIdx = 0;
@@ -12,25 +12,41 @@ export function createZombie(x, y) {
     timer: 1 + Math.random() * 2, color: COLORS.zombies[paletteIdx++ % COLORS.zombies.length],
     hp: ZOMBIE.HP, stunned: false, flash: 0, death: 0, dead: 0,
     chasing: false, lastSeen: null, sees: false, attackT: 0, lunge: 0, hitCd: 0,
-    climbing: false, stagger: 0, kbDir: 0,
+    climbing: false, scrambling: false, scramble: null, stagger: 0, kbDir: 0,
   };
 }
 
 export function hurtZombie(state, e, dmg, fromX) {
   if (e.stunned) return;
-  e.hp -= dmg; e.flash = 0.1;
+  e.hp -= dmg; e.flash = 0.1; e.scramble = null;
   e.stagger = ZOMBIE.STAGGER; e.kbDir = Math.sign((e.x + e.w / 2) - fromX) || 1;
   if (e.hp <= 0) { e.stunned = true; e.vx = 0; e.death = ZOMBIE.DEATH_DUR; state.kills++; }
 }
 
-// The solid door/shutter/trapdoor directly in front of a blocked zombie, if any. Zombies reach one tile up.
-function portalInFront(world, e) {
+// The nearest solid, damageable tile (door/shutter/trapdoor, or a built wall/floor) directly in
+// front of a blocked zombie, if any. Zombies reach one tile up. Earth and trees are never
+// returned here (canZombieDamage is false for them) — that's what makes them un-diggable.
+function attackableInFront(world, e) {
   const c = world.colOf(e.vx > 0 ? e.x + e.w + 2 : e.x - 2);
   for (let r = world.rowOf(e.y) - 1; r <= world.rowOf(e.y + e.h - 1); r++) {
     const t = world.get(c, r);
-    if (isPortal(t) && isSolid(t)) return t;
+    if (t && isSolid(t) && canZombieDamage(t)) return { t, c, r };
   }
   return null;
+}
+
+// Height of the (non-attackable, e.g. dirt/stone) obstacle directly in front, in tiles, and
+// where scrambling onto it would put the zombie: standing on top of the stack, in its column
+// (not just elevated in place — with vx frozen during the climb there's nothing left to carry
+// it sideways, so the landing spot has to already overlap solid ground beneath it).
+function obstacleProfile(world, e) {
+  const dir = e.vx > 0 ? 1 : -1;
+  const c = world.colOf(dir > 0 ? e.x + e.w + 2 : e.x - 2);
+  const baseR = world.rowOf(e.y + e.h - 1);
+  if (!isSolid(world.get(c, baseR))) return { height: 0 };
+  let h = 1;
+  while (isSolid(world.get(c, baseR - h))) h++;
+  return { height: h, landY: (baseR - h + 1) * TILE - e.h, landX: dir > 0 ? c * TILE : c * TILE + TILE - e.w };
 }
 
 function nearestClimbColumn(world, x) {
@@ -49,7 +65,8 @@ export function updateZombies(state, dt) {
     e.hitCd = Math.max(0, e.hitCd - dt); e.lunge = Math.max(0, e.lunge - dt);
     e.flash = Math.max(0, e.flash - dt); e.death = Math.max(0, e.death - dt);
     e.stagger = Math.max(0, e.stagger - dt);
-    e.climbing = false;
+    if (e.stagger > 0) e.scramble = null;         // a hit knocks it back down
+    e.climbing = false; e.scrambling = false;
     const ec = e.x + e.w / 2, ecy = e.y + e.h / 2;
 
     if (e.stunned) { e.dead += dt; }
@@ -97,22 +114,43 @@ export function updateZombies(state, dt) {
       }
     }
 
-    // ---- move. A climber is on the rungs: nothing blocks it and nothing stands on it except tiles and the player.
-    if (!e.climbing) e.vy = Math.min(PHYSICS.MAX_FALL, e.vy + PHYSICS.GRAV * dt);
-    const others = e.climbing ? [] : living.filter(o => o !== e && !o.climbing);
+    // ---- scrambling: clinging to a too-tall obstacle, climbing it slowly. Overrides this
+    // frame's decided vx; completes by snapping onto the top of the stack.
+    if (e.scramble) {
+      e.scrambling = true; e.vx = 0;          // stays true for the rest of this frame even on completion,
+      e.scramble.t += dt;                     // so gravity doesn't nudge it the instant it lands
+      if (e.scramble.t >= ZOMBIE.SCRAMBLE_TIME) { e.x = e.scramble.landX; e.y = e.scramble.landY; e.vy = 0; e.scramble = null; }
+    }
+
+    // ---- move. A climber (ladder or scramble) is on a surface: nothing blocks it and nothing
+    // stands on it except tiles and the player.
+    if (!e.climbing && !e.scrambling) e.vy = Math.min(PHYSICS.MAX_FALL, e.vy + PHYSICS.GRAV * dt);
+    const others = (e.climbing || e.scrambling) ? [] : living.filter(o => o !== e && !o.climbing && !o.scrambling);
     moveBody(e, world.solidsNear(e).concat(e.stunned ? [] : [player, ...others]), dt);
 
     if (e.stunned) continue;
 
-    // ---- blocked: attack the portal in front, climb a step, or turn around
-    if (!e.climbing && e.hitX && e.vx !== 0 && e.stagger === 0) {
-      const t = e.chasing ? portalInFront(world, e) : null;
-      if (t) {
+    // ---- blocked: attack anything damageable in front, climb a 1-tile step, scramble a 2-tile
+    // one (slowly — DESIGN §8.4b), or turn around. A 3+ obstacle that isn't attackable just holds.
+    if (!e.climbing && !e.scrambling && e.hitX && e.vx !== 0 && e.stagger === 0) {
+      const hit = e.chasing ? attackableInFront(world, e) : null;
+      if (hit) {
         e.attackT += dt;
-        if (e.attackT >= ZOMBIE.ATTACK_PERIOD) { e.attackT = 0; e.lunge = ZOMBIE.LUNGE; damageTile(t, ZOMBIE.ATTACK_DMG); world.touch(); }
-      } else if (e.chasing) { e.attackT = 0; if (e.onGround || onClimbable(world, e)) tryClimb(world, e); }
-      else { e.attackT = 0; e.dir *= -1; e.timer = 0.5 + Math.random(); }
-    } else if (!e.climbing) e.attackT = 0;
+        if (e.attackT >= ZOMBIE.ATTACK_PERIOD) {
+          e.attackT = 0; e.lunge = ZOMBIE.LUNGE;
+          const result = damageTile(hit.t, ZOMBIE.ATTACK_DMG);
+          if (result === 'broke' && !isPortal(hit.t)) world.set(hit.c, hit.r, airAfter(hit.t, world.isUnderground(hit.c, hit.r)));
+          world.touch();
+        }
+      } else if (e.chasing) {
+        e.attackT = 0;
+        const climbed = (e.onGround || onClimbable(world, e)) && tryClimb(world, e);
+        if (!climbed) {
+          const profile = obstacleProfile(world, e);
+          if (profile.height >= 2 && profile.height <= ZOMBIE.SCRAMBLE_MAX) e.scramble = { t: 0, landX: profile.landX, landY: profile.landY };
+        }
+      } else { e.attackT = 0; e.dir *= -1; e.timer = 0.5 + Math.random(); }
+    } else if (!e.climbing && !e.scrambling) e.attackT = 0;
 
     // ---- contact
     if (!player.dead && e.hitCd === 0 && overlap({ x: e.x - 3, y: e.y - 3, w: e.w + 6, h: e.h + 6 }, player)) {

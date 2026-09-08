@@ -63,8 +63,9 @@ The first full loop: get resources → build a house → don't die.
 - [x] Surface stone actually spawns (mounds were being excluded by tree spacing); underground stone veins; natural caves
 - [x] Underground base confirmed: dig in, cap with floor + trapdoor, sealed
 - [x] Pits: zombies fall in and stack; a 2-deep 1-wide pit holds one before the next walks over it. Emergent from body collision — keep.
-- [ ] Scrambling: a chasing zombie blocked by a 2-tile obstacle climbs it slowly (~5 s, visible state); 3+ is impossible. `MAX_SCRAMBLE` in config. Makes pits a delay, low fences a bad wall, 3-high a real one.
-- [ ] Zombies attack timber/stone walls when they're what's in the way (slowly) — otherwise a wall is a cheat
+- [x] Scrambling: a chasing zombie blocked by a 2-tile obstacle climbs it slowly (5s, visible clawing shake), landing on top aligned with the obstacle's column; 3+ is impossible and just holds. `ZOMBIE.SCRAMBLE_MAX` / `SCRAMBLE_TIME` in config.
+- [x] Zombies attack timber/stone walls: `canZombieDamage(t)` is true for any tile with finite hp (or a portal) — earth/stone/trees stay Infinity, so this fell out of the existing hp field with no new flag. A broken wall/floor turns to air (no drop; that's zombie loss, not player harvest).
+- [x] Fixed a landing bug where scrambling only changed Y, leaving the zombie floating one column short of the obstacle with nothing to stand on — it would fall right back down and restart the climb forever. Landing now also snaps X into the obstacle's column.
 - [ ] Played: fell trees, build a hut with a door, seal it, survive; dig a basement, cap it, confirm sealed
 
 ## Phase 2b — Everything is an item (DESIGN §7.3, §5.5)
@@ -244,4 +245,6 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
 - 2026-09-07 — Everything is an item (Phase 2b). The Build… palette was a shortcut that fused crafting and placing; that fusion means placeables can't be loot, can't take inventory space, and can't be picked back up. Minecraft model instead: craft → inventory → hotbar → place. Ghost preview stays as the placement UI.
 - 2026-09-07 — Taking a thing down (harvest) returns the thing; losing it (zombie breaks it) returns nothing.
 - 2026-09-07 — Wood yield in 2D: log → 4 planks at the crafting step, not per-hit trunks. Trunks stay 1 block = 1 log so bark blocks are real, placeable, and cost a full log.
+- 2026-09-08 — Zombie wall-damage needed no new flag: `canZombieDamage(t)` is just "finite hp or a portal" — the same `hp: Infinity` that already marks earth/stone/trees as un-diggable also marks them as un-attackable by zombies.
+- 2026-09-08 — Dev workflow gotcha: the plain `python -m http.server` sends no cache headers, so the browser can silently keep serving stale JS modules across reloads while editing — cost real debugging time chasing a "bug" that was actually stale code. Fixed with `devserver.mjs` (sends `Cache-Control: no-store`); `.claude/launch.json` now uses it. If a change still doesn't seem to take effect after that, the browser's *disk* cache can still hold entries from before the switch — bump the dev port to get a clean origin rather than chasing it further.
 - 2026-09-07 — Combat numbers are **tuned**, not placeholders: two zombies in a room cost half your HP while playing carefully. `SWORD.*`, `ZOMBIE.HP`, `ZOMBIE.CONTACT_DMG` change only with a reason. Pressure systems (night, hordes, needs) stack on top of this baseline; don't re-tune the baseline to compensate for them.
