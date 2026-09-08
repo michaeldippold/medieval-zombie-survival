@@ -10,7 +10,7 @@ export function paintItemIcon(ctx, id) {
   const item = ITEMS[id];
   if (item?.make) { paintTile(ctx, 0, 0, item.make(1)); return; }
   switch (id) {
-    case 'wood':
+    case 'plank':
       for (let i = 0; i < 3; i++) { ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(4, 6 + i * 11, 32, 9); ctx.fillStyle = COLORS.frame; ctx.fillRect(4, 13 + i * 11, 32, 2); }
       break;
     case 'arrow':

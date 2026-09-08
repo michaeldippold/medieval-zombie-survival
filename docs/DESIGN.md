@@ -122,7 +122,8 @@ Drawn back to front:
 ### 5.3 Tile catalogue
 
 Two numbers per tile: **hp** is what zombies chew through (∞ = they can't); **harvest** is what
-the player's tool does (`tool`, `hits`, `drop`, and `perHit` for ore-like yield).
+the player's tool does (`tool`, `hits`, `drop`, and `perHit` for ore-like yield). `drop` on a
+natural tile is a raw material; on a built tile it is the tile's own item id (§7.3).
 
 | kind | solid | opaque | hp | harvest | notes |
 |---|---|---|---|---|---|
@@ -131,19 +132,28 @@ the player's tool does (`tool`, `hits`, `drop`, and `perHit` for ore-like yield)
 | `grass` | yes | yes | ∞ | shovel ×2 → dirt | dirt with a cap |
 | `stone` | yes | yes | ∞ | pick ×6 → stone **per hit** | mounds on the surface, a layer below |
 | `bedrock` | yes | yes | ∞ | — | bottom row |
-| `trunk` | **no** | **no** | ∞ | axe ×1 → wood | trees don't block; no tree physics |
+| `trunk` | **no** | **no** | ∞ | axe ×1 → log | trees don't block; no tree physics |
 | `leaf` | **no** | **no** | ∞ | anything ×1 → leaves | placeable, 1 leaves — bushes, hedges, clutter |
-| `wall` (timber) | yes | yes | 300 | axe ×4 → wood | placeable, 1 wood |
-| `wall_stone` | yes | yes | 900 | pick ×6 → stone | placeable, 1 stone |
-| `floor` (planks) | yes | yes | 120 | axe ×2 → wood | placeable, 1 wood |
-| `ladder` | no | no | 40 | axe ×1 → wood | climbable; placeable, 1 wood |
-| `door` | state | state | 150 | axe ×3 → wood | portal, bars from inside; 2 wood |
-| `shutter` | state | state | 60 | axe ×2 → wood | portal, climb-through when open; 1 wood |
-| `hatch` | state | state | 120 | axe ×3 → wood | portal in a floor, bars from above; 2 wood |
+| `log` | yes | yes | 250 | axe ×3 → log | placeable, 1 log — a real wall, unlike `trunk` |
+| `wall` (timber) | yes | yes | 300 | axe ×4 → wall | placeable, 1 plank |
+| `wall_stone` | yes | yes | 900 | pick ×6 → wall_stone | placeable, 1 stone |
+| `floor` (planks) | yes | yes | 120 | axe ×2 → floor | placeable, 1 plank |
+| `ladder` | no | no | 40 | axe ×1 → ladder | climbable; placeable, 1 plank |
+| `door` | state | state | 150 | axe ×3 → door | portal, bars from inside; 2 plank |
+| `shutter` | state | state | 60 | axe ×2 → shutter | portal, climb-through when open; 1 plank |
+| `hatch` | state | state | 120 | axe ×3 → hatch | portal in a floor, bars from above; 2 plank |
 
 Collision decisions: trees and leaves never block movement or sight (a tree you can't walk
 past is not fun; a forest you can't see through is a different game). Stone does both — a
-stone mountain is a thing worth building.
+stone mountain is a thing worth building. A placed **log block** is a deliberate exception to
+"trees don't collide": it's the same bark look as a trunk, but it's something you built, so it
+has to actually hold up a wall — `log` is its own tile kind, solid and zombie-attackable, kept
+separate from the never-solid natural `trunk`.
+
+**Wood yield**: a trunk tile fells 1:1 into a `log` (placeable as-is — a bark block, for
+variety). Crafting turns 1 log into 4 **planks**, and every structure recipe costs planks, not
+logs directly. That multiplier — not more or taller trees — is what makes one tree's wood
+worth building with; see §7.3.
 
 Future: `chest`, `workbench`, `bed`, `well`, `torch` (decorative until lighting exists),
 `fence` (solid, not opaque — the first split), `spikes`.
@@ -180,9 +190,10 @@ opaque = solid
   follows the cursor as a half-opaque ghost, outlined green where it can go and red where it
   can't (not empty, blocked by a body, too far, none left). Each left click stamps one and
   takes one from the stack. Selecting another slot is the exit; there is no build mode — the
-  held item *is* the mode. Raw blocks (dirt, leaves) are placeable straight from the ground;
-  structures (walls, floors, ladders, doors, shutters, trapdoors) are crafted from wood or
-  stone first (§7.3). Doors and shutters take their "inside" from the side the player stood
+  held item *is* the mode. Raw blocks (dirt, leaves, logs) are placeable straight off the
+  ground or a felled tree; structures (walls, floors, ladders, doors, shutters, trapdoors) are
+  crafted from planks or stone first (§7.3). Doors and shutters take their "inside" from the
+  side the player stood
   on. Placed tiles inherit the air tile's `back`.
 - **Dismantling** is harvesting a built tile with the matching tool. It drops the *item*
   (a door drops a door), so anything you built can be moved. A tile a zombie breaks drops
@@ -256,7 +267,7 @@ day one plays exactly as if the hotbar were fixed — it just isn't, underneath.
   `placeable` shows a ghost and stamps a copy into the world, consuming one from the stack
   (`src/placement.js`). Selecting a different slot is the only way to stop placing —
   there is no separate build mode, because the held item *is* the mode. `material`
-  (wood, stone, arrows) has no left-click behaviour of its own; it's consumed by recipes
+  (planks, stone, arrows) has no left-click behaviour of its own; it's consumed by recipes
   or by the bow.
 - **Crafting**: right-click empty ground → Craft… opens a palette of recipes (`cost` →
   `gives`, data in `items.js`); affordable ones are lit; a click crafts one batch and the
@@ -392,7 +403,7 @@ colour and strength will follow the sky.
   0.5 s. Delay = distance / 1100 px/s.
 - Damage 2. Cooldown 0.6 s.
 - **Ammo**: arrows are an inventory item. 10 to start. A miss drops the arrow where it
-  stuck; a hit returns it 60% of the time at the target. 1 wood fletches 4 (right-click
+  stuck; a hit returns it 60% of the time at the target. 1 plank fletches 4 (right-click
   menu). This is what stops the bow being the best weapon.
 
 ### 10.3 Damage model

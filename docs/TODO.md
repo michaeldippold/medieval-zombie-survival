@@ -106,16 +106,19 @@ each step leaves the game playable.
        nothing, and that sword/bow still fire correctly with slot-resolved `held`.
 
 ### 2b-trees — trunks are blocks, logs → planks
-- [ ] Trunk tile fills the whole 40px block (bark texture edge to edge) so it reads as a block
-      you could place, and looks right beside planks in a wall
-- [ ] Trunk drops a **log** item; logs are placeable (a bark block for builds — visual variety,
-      costs a whole log)
-- [ ] Craft: 1 log → 4 **planks**. Walls, floors, ladders, doors, shutters, trapdoors cost planks
-      (same numbers as today's wood costs). Arrows: 1 plank → 4. This is the 2D wood-yield fix:
-      4× per tree, no farming needed, one block still equals one item.
-- [ ] Some trees spawn with 2-wide trunks (both columns are trunk tiles; leaf blob spans both);
-      more logs per tree and a different silhouette
-- [ ] Tree counts/heights retuned after the above so a starter house is ~2 trees of work
+- [x] Trunk tile fills the whole 40px block (bark texture edge to edge) — a shared `paintBark`
+      helper draws both the natural trunk and the placed log block identically
+- [x] Trunk drops a **log** item (`ITEMS.log`, kind `placeable`); its tile (`log` in TILE_DEFS)
+      is a real solid/opaque/zombie-attackable block, deliberately a *different* tile kind from
+      natural `trunk` (which stays non-solid) — a placed log has to actually function as a wall
+- [x] Craft: 1 log → 4 **planks** (`CRAFTS.planks`). Every structure recipe now costs `plank`
+      instead of a raw `wood` item (which no longer exists); arrows cost 1 plank → 4. Verified
+      the whole chain — fell → log → craft planks → craft wall → place → dismantle → get the
+      `wall` item back — in isolated node tests (deterministic; see workflow note below).
+- [x] Some trees spawn 2-wide (`WORLDGEN.WIDE_TREE_CHANCE = 0.3`): both trunk columns filled,
+      leaf blob widened to match, still routed around other trees/mounds/the house
+- [x] Tree counts/heights left as-is — the 4× log→plank multiplier alone gets a starter hut
+      comfortably under one tree's worth of wood; retuning tree count wasn't needed
 - Backlog: saplings / regrowth, if wood ever runs dry on a long run
 
 ## Phase 2c — Extensibility: make the three vectors cheap
@@ -252,11 +255,22 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
 - 2026-09-08 — Phase 2b (everything is an item) shipped. `state.held` changed meaning from an
   item id string to a hotbar slot index — every read site now resolves it via `heldId()`. Watch
   for this if old code or notes mention `state.held === 'sword'`; that pattern is stale.
-- 2026-09-08 — Test-methodology note for future live-game scripting in the browser console:
-  never call `game.update(dt)` with `dt` larger than 1/30 — the real loop clamps to that, and a
-  bigger step (e.g. used to "fast-forward" a cooldown) can tunnel a body through the ground,
-  since it's a discrete per-frame move-then-resolve, not a continuous simulation. Burned real
-  time chasing a "dismantle doesn't work" ghost that was actually the player having fallen
-  through the world. Advance many small steps instead of few large ones.
+- 2026-09-08 — Test-methodology notes for future live-game scripting in the browser console
+  (both burned real time chasing a "bug" that was actually the test):
+  1. Never call `game.update(dt)` with `dt` larger than 1/30 — the real loop clamps to that, and
+     a bigger step (e.g. to "fast-forward" a cooldown) can tunnel a body through the ground,
+     since it's a discrete per-frame move-then-resolve, not a continuous simulation. Advance
+     many small steps instead of a few large ones.
+  2. `main.js`'s own `requestAnimationFrame` loop keeps calling `game.update(realDt)` in the
+     background the whole time the page is open — it does not pause just because a script is
+     driving `game.update` manually too. Real time between separate tool calls (network
+     round-trips, an `await import(...)`) is real elapsed time for that loop, so player
+     position, zombie state, anything time-based can have drifted between one script and the
+     next. Do a whole scripted interaction — position setup through the final assertion — in
+     one atomic script with no unnecessary awaits in the middle, and re-establish any state
+     (stun zombies, reset position) at the top of that script rather than trusting it survived
+     from a previous call. When a live-game script's result looks impossible, prefer a
+     deterministic pure-Node repro (construct a `World`/inventory directly, no DOM, no time) —
+     it's faster to trust and immune to both of these.
 - 2026-09-08 — Dev workflow gotcha: the plain `python -m http.server` sends no cache headers, so the browser can silently keep serving stale JS modules across reloads while editing — cost real debugging time chasing a "bug" that was actually stale code. Fixed with `devserver.mjs` (sends `Cache-Control: no-store`); `.claude/launch.json` now uses it. If a change still doesn't seem to take effect after that, the browser's *disk* cache can still hold entries from before the switch — bump the dev port to get a clean origin rather than chasing it further.
 - 2026-09-07 — Combat numbers are **tuned**, not placeholders: two zombies in a room cost half your HP while playing carefully. `SWORD.*`, `ZOMBIE.HP`, `ZOMBIE.CONTACT_DMG` change only with a reason. Pressure systems (night, hordes, needs) stack on top of this baseline; don't re-tune the baseline to compensate for them.

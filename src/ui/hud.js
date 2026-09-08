@@ -29,7 +29,7 @@ export function drawHud(ctx, state) {
 
   // inventory readout, top right — just the raw materials, since tools/weapons/placeables live on the bar
   ctx.font = `12px ${MONO}`; ctx.textAlign = 'right';
-  const inv = ['wood', 'stone'].filter(id => count(inventory, id) > 0).map(id => `${ITEMS[id].name.toLowerCase()} ${count(inventory, id)}`).join('  ·  ') || 'I · inventory';
+  const inv = ['log', 'plank', 'stone'].filter(id => count(inventory, id) > 0).map(id => `${ITEMS[id].name.toLowerCase()} ${count(inventory, id)}`).join('  ·  ') || 'I · inventory';
   ctx.fillStyle = COLORS.hud; ctx.fillRect(W - 12 - ctx.measureText(inv).width - 16, 12, ctx.measureText(inv).width + 16, 18);
   ctx.fillStyle = '#fff'; ctx.fillText(inv, W - 20, 25);
   ctx.textAlign = 'left';

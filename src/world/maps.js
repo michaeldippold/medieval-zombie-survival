@@ -52,17 +52,21 @@ export function buildStarterMap() {
     made++;
   }
 
-  // ---- trees: a trunk of 3–5 with a leaf blob on top. No collision, no sight blocking.
+  // ---- trees: a trunk of 3–5 (some 2-wide) with a leaf blob on top. No collision, no sight
+  // blocking. Each trunk tile fells to one log; a 2-wide tree is a bigger, blockier silhouette
+  // and roughly double the wood for the same footprint of exploring.
   const treeCols = [];
   for (let tries = 0; tries < 400 && treeCols.length < G.TREES; tries++) {
-    const c = ri(4, G.COLS - 5);
-    if (reserved(c) || treeCols.some(x => Math.abs(x - c) < 4) || !surfaceClear(c - 2, 5, 8)) continue;
+    const wide = rnd() < G.WIDE_TREE_CHANCE;
+    const tw = wide ? 2 : 1;                     // trunk width in columns
+    const c = ri(4, G.COLS - 6 - tw);
+    if (reserved(c) || (tw > 1 && reserved(c + 1)) || treeCols.some(x => Math.abs(x - c) < 4 + tw) || !surfaceClear(c - 2, tw + 4, 8)) continue;
     treeCols.push(c);
     const h = ri(3, 5);
-    for (let r = S - 1; r >= S - h; r--) world.set(c, r, makeTile('trunk'));
-    const top = S - h;
-    for (let dr = -2; dr <= 0; dr++) for (let dc = -2; dc <= 2; dc++) {
-      if (Math.abs(dc) === 2 && dr !== -1) continue;             // knock the corners off
+    for (let dc = 0; dc < tw; dc++) for (let r = S - 1; r >= S - h; r--) world.set(c + dc, r, makeTile('trunk'));
+    const top = S - h, leafR = tw + 1;           // leaf blob spans 2 past the trunk on either side
+    for (let dr = -2; dr <= 0; dr++) for (let dc = -2; dc <= leafR; dc++) {
+      if ((dc === -2 || dc === leafR) && dr !== -1) continue;    // knock the corners off
       const cc = c + dc, rr = top + dr;
       if (world.inBounds(cc, rr) && !world.get(cc, rr)) world.set(cc, rr, makeTile('leaf'));
     }

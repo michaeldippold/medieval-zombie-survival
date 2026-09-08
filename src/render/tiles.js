@@ -21,6 +21,14 @@ function paintPlain(ctx, x, y, t) {
   paintCracks(ctx, x, y, integrity(t));
 }
 
+// Bark: edge-to-edge fill with a couple of shaded rings so it doesn't read as a flat brown box.
+function paintBark(ctx, x, y) {
+  ctx.fillStyle = COLORS.trunk; ctx.fillRect(x, y, T, T);
+  ctx.fillStyle = COLORS.trunkShade;
+  ctx.fillRect(x, y, 4, T); ctx.fillRect(x + T - 4, y, 4, T);
+  ctx.fillRect(x, y + 10, T, 3); ctx.fillRect(x, y + 27, T, 3);
+}
+
 function paintBack(ctx, x, y, back, c) {
   if (back === 'plaster') { ctx.fillStyle = COLORS.plaster; ctx.fillRect(x, y, T, T); if (c % 2 === 0) { ctx.fillStyle = COLORS.plasterStripe; ctx.fillRect(x, y, T, T); } }
   else if (back === 'earth') { ctx.fillStyle = COLORS.earthBack; ctx.fillRect(x, y, T, T); }
@@ -35,10 +43,10 @@ const PAINTERS = {
     ctx.fillStyle = COLORS.grassShade; ctx.fillRect(x, y + 8, T, 2);
     paintCracks(ctx, x, y, integrity(t));
   },
-  trunk(ctx, x, y) {
-    ctx.fillStyle = COLORS.trunk; ctx.fillRect(x + 10, y, 20, T);
-    ctx.fillStyle = COLORS.trunkShade; ctx.fillRect(x + 10, y, 4, T); ctx.fillRect(x + 20, y + 8, 3, 14);
-  },
+  // Full block, edge to edge, so a natural trunk and a placed log block read as the same
+  // material — one is just standing in a tree, the other in a wall.
+  trunk(ctx, x, y) { paintBark(ctx, x, y); },
+  log(ctx, x, y, t) { paintBark(ctx, x, y); paintCracks(ctx, x, y, integrity(t)); },
   leaf(ctx, x, y, t, c, r) {
     ctx.fillStyle = COLORS.leaf; ctx.fillRect(x, y, T, T);
     ctx.fillStyle = COLORS.leafShade; ctx.fillRect(x + ((c * 7 + r * 3) % 20), y + ((c * 5 + r * 11) % 22), 10, 8);
