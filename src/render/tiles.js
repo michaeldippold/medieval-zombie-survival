@@ -5,12 +5,16 @@ import { spriteFor } from './assets.js';
 
 export function paintTile(ctx, c, r, t) {
   const x = c * T, y = r * T;
-  if (t.back) paintBack(ctx, x, y, t.back, c);
-  const sprite = spriteFor(t.kind);
+  // A `part` cell (DESIGN §5.8) has no def of its own — it paints the same live tile as its
+  // anchor, at its own position, so a 2-tall door reads as one door rather than a door with a
+  // blank slab stacked on it.
+  const real = t.kind === 'part' ? t.anchor : t;
+  if (real.back) paintBack(ctx, x, y, real.back, c);
+  const sprite = spriteFor(real.kind);
   if (sprite) { ctx.drawImage(sprite, x, y, T, T); return; }
-  const fn = PAINTERS[t.kind];
-  if (fn) fn(ctx, x, y, t, c, r);
-  else paintPlain(ctx, x, y, t);
+  const fn = PAINTERS[real.kind];
+  if (fn) fn(ctx, x, y, real, c, r);
+  else paintPlain(ctx, x, y, real);
 }
 
 // Default look for any block without its own painter: a flat fill from the def, optional cap

@@ -1,43 +1,47 @@
 // Every tunable number in the game lives here. A literal in a system file is a bug.
 // See docs/DESIGN.md for what each group means.
 
-export const TILE = 40;
+// Tile size 40 -> 32 and viewport 960x560 -> 1280x720: DESIGN §6.1, the two-tall scale change.
+// Every px-based speed/reach/sight below is x0.8 (32/40) to keep its feel in TILE-relative
+// terms identical to before; PLAYER/ZOMBIE dimensions are the new two-tall bodies outright,
+// not a x0.8 rescale of the old ones (see DESIGN §5.1/§6.1 for why the two are different).
+export const TILE = 32;
 
-export const VIEW = { W: 960, H: 560, CAMERA_Y_BIAS: 0.62 };   // bias > 0.5 keeps more sky above the player
+export const VIEW = { W: 1280, H: 720, CAMERA_Y_BIAS: 0.62 };   // bias > 0.5 keeps more sky above the player
 
-export const PHYSICS = { GRAV: 1800, MAX_FALL: 1000 };
+export const PHYSICS = { GRAV: 1440, MAX_FALL: 800 };
 
 export const WORLDGEN = { COLS: 120, ROWS: 40, SURFACE: 24, STONE_FROM: 32, TREES: 16, WIDE_TREE_CHANCE: 0.3, STONE_MOUNDS: 7, STONE_VEINS: 40, CAVES: 6, SEED: 7 };
 
 export const PLAYER = {
-  W: 26, H: 36,
-  RUN_SPEED: 260, JUMP_V: -640, JUMP_CUT: -220,
+  W: 24, H: 60,
+  RUN_SPEED: 208, JUMP_V: -512, JUMP_CUT: -176,
   GROUND_BLEND: 18, AIR_BLEND: 8,
-  CLIMB_SPEED: 180, SLIDE_SPEED: 70, LADDER_JUMP_GRACE: 0.3,
+  CLIMB_SPEED: 144, SLIDE_SPEED: 56, LADDER_JUMP_GRACE: 0.3,
   HP: 100, HURT_FLASH: 0.25,
-  REACH: 110,
+  REACH: 88,
 };
 
 export const INFECTION = { CHANCE: 0.25, TIME: 90, FEVER_AT: 0.6, FEVER_DRAIN: 0.4 };
 
 export const ZOMBIE = {
-  W: 30, H: 30, HP: 3,
-  SPEED_MIN: 55, SPEED_VAR: 70, CHASE_MULT: 1.3, CLIMB_SPEED: 55, CLIMB_DRIFT: 40,
-  SIGHT_X: 380, SIGHT_Y: 260, MEMORY: 6,
+  W: 26, H: 60, HP: 3,
+  SPEED_MIN: 44, SPEED_VAR: 56, CHASE_MULT: 1.3, CLIMB_SPEED: 44, CLIMB_DRIFT: 32,
+  SIGHT_X: 304, SIGHT_Y: 208, MEMORY: 6,
   ATTACK_PERIOD: 0.9, ATTACK_DMG: 20, LUNGE: 0.15,
-  CONTACT_DMG: 20, CONTACT_CD: 0.8, KNOCKBACK_X: 240, KNOCKBACK_Y: -200,
-  STAGGER: 0.22, STAGGER_SPEED: 160,
+  CONTACT_DMG: 20, CONTACT_CD: 0.8, KNOCKBACK_X: 192, KNOCKBACK_Y: -160,
+  STAGGER: 0.22, STAGGER_SPEED: 128,
   DEATH_DUR: 0.3, CORPSE_LINGER: 2.5, CORPSE_FADE: 1.0,
   WANDER_MIN: 0.8, WANDER_VAR: 2.2,
   SCRAMBLE_MAX: 2, SCRAMBLE_TIME: 5,   // a stack this tall (in tiles) of non-attackable blocks can be scrambled over, this slowly; taller is impossible
 };
 
-export const ATTENTION = { RANGE: 900, LINGER: 5 };
+export const ATTENTION = { RANGE: 720, LINGER: 5 };
 
-export const SWORD = { REACH: 78, HALF_ARC: 0.95, WINDUP: 0.15, ACTIVE: 0.10, RECOVER: 0.35, DMG: 1 };
+export const SWORD = { REACH: 62, HALF_ARC: 0.95, WINDUP: 0.15, ACTIVE: 0.10, RECOVER: 0.35, DMG: 1 };
 SWORD.TOTAL = SWORD.WINDUP + SWORD.ACTIVE + SWORD.RECOVER;
 
-export const BOW = { RANGE: 800, COOLDOWN: 0.6, ARROW_SPEED: 1100, ARROW_STICK: 0.5, DMG: 2, MIN_FLIGHT: 0.08, RECOVER_CHANCE: 0.6 };
+export const BOW = { RANGE: 640, COOLDOWN: 0.6, ARROW_SPEED: 880, ARROW_STICK: 0.5, DMG: 2, MIN_FLIGHT: 0.08, RECOVER_CHANCE: 0.6 };
 
 export const TOOLS = { COOLDOWN: 0.3 };
 

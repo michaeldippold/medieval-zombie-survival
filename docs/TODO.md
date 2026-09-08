@@ -212,25 +212,49 @@ are built, and it's in this repo so nothing has to be copied by hand.
 - [ ] **Hold-to-use**: holding left-click repeats for tools (dig/chop/mine) and placeables
       (paint a line). Weapons stay one click per swing. (DESIGN §7.1)
 
-## Phase 3 — Scale: two-tall bodies (DESIGN §5.1, §6.1)
+## Phase 3 — Scale: two-tall bodies (DESIGN §5.1, §6.1) ✅ 2026-09-08 (core landed; see open items)
 
-Reverses the one-tall ruling. Done first, before any prefab or art exists, while the house is
-still one function. Own commit, played hard before anything else lands on top.
+Reverses the one-tall ruling. Done first, before any prefab or art exists, while the house was
+still one function.
 
-- [ ] `TILE` 40 → 32; `VIEW` 960×560 → 1280×720 (40×22 tiles); canvas scales to the window
-      with integer scaling where possible; `image-rendering: pixelated`
-- [ ] Player ≈ 24×60, zombie ≈ 26×60; px-based tunables ×0.8 (speeds, reach, sight, jump);
-      placeholder box sprites at the new size
-- [ ] `tryClimb` generalised: "the body fits at the lifted position" (any height)
-- [ ] Anchor/part multi-cell mechanism (`world/multi.js`): `part` tiles delegate every
-      predicate to their anchor; placement ghosts/checks the whole footprint; harvest and
-      interact resolve to the anchor; anchor draws the sprite (DESIGN §5.8)
-- [ ] Doors and shutters 2 tall via anchor/part; a 1-tall `window` (shutter at head height:
-      breakable for sight, not climb-through) as the first thing the change makes possible
-- [ ] House rebuilt: rooms 4–5 tall, 2-tall door, loft; tunnels 2 tall in worldgen caves
-- [ ] Wall/floor recipes yield more (a room costs twice the tiles, not twice the trees)
-- [ ] Zombie scramble/attack row loops re-verified in node at the new height
-- [ ] Played: the house, a dig, a siege — jump and combat re-tuned by feel
+- [x] `TILE` 40 → 32; `VIEW` 960×560 → 1280×720; page column and canvas aspect-ratio widened
+      to match. Scaling stayed CSS `width:100%`/`aspect-ratio` (fluid), not integer-only —
+      that was already how the 40px canvas scaled, unchanged here, just bigger
+- [x] Player 24×60, zombie 26×60; every px-based tunable (speeds, reach, sight, jump velocity,
+      gravity) ×0.8, which — verified algebraically, not just by feel — keeps jump height and
+      run speed identical in *tile* terms to before. Placeholder box art's helmet/visor/brow/
+      eye positions now scale as fractions of body size instead of fixed pixels, so the face
+      doesn't end up stranded near the top of a much taller box
+- [x] `tryClimb` (`physics.js`) generalised: computes how many rows the body's own height
+      needs above a one-tile step and requires all of them clear, not just one fixed row
+- [x] Anchor/part multi-cell mechanism — landed as functions in `world/tiles.js`
+      (`stampMulti`, `footprintCells`) rather than a separate `world/multi.js`; every
+      predicate (`isSolid`, `isPortal`, `damageTile`, `harvestTile`, ...) redirects a `part`
+      to its anchor by one level of recursion, no world lookup needed. `placement.js`
+      (footprint-aware `canPlaceAt`/ghost) and `tools.js` (footprint-clearing removal) both
+      use it; `interactions.js` resolves a part to its anchor once, up front, before any
+      direct field mutation (a redirect-on-read wasn't enough there — see its comment)
+- [x] Doors and shutters are 2 tall via anchor/part. The separate 1-tall breakable `window`
+      variant (sight without entry) was **not** built this pass — noted below, not forgotten
+- [x] House rebuilt: interior 9 rows (was 7) — 4 ground floor, 1 loft floor, 4 loft — door on
+      the front wall, a matching ground window opposite it, a window per wall in the loft
+- [x] Wall/floor recipes give 2 per plank instead of 1
+- [x] Verified in Node (deterministic, no DOM): 22 checks covering the full anchor/part
+      lifecycle — worldgen and player placement, `isSolid`/`isPortal`/`portalName` redirects,
+      shared-state mutation through either cell, a two-tall body correctly admitted by an
+      open 2-tall door and blocked by a closed one, and full dismantle clearing both cells.
+      Confirmed live in-browser too: sampled rendered pixels at both the door's anchor and
+      part cells (frame/leaf colours present, not a flat fill) and at both cells on open
+      (both flip to the same "opening" colour), then walked the real input/update loop
+      through the open door and up the loft ladder with no console errors
+- [ ] **Not done — real playtesting.** All of the above is mechanically verified; none of it
+      is *felt* yet. Jump arc, combat spacing, and the new room proportions need an actual
+      play session before the numbers are trusted
+- [ ] **Not done — the 1-tall window variant** (sight, not entry) from the original plan
+- [ ] **Not done — cave tunnel height.** Existing `WORLDGEN.CAVES` radii (`ry` 1–2, so 3–5
+      rows) weren't changed or specifically re-checked against the new body height; likely
+      fine (§ analysis says so) but not played
+- [ ] `docs/ADDING.md` still doesn't exist (carried over from 2c, not new here)
 
 ## Phase 4 — Editor and asset pipeline (DESIGN §16) — parallel track ✅ 2026-09-08
 

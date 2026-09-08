@@ -6,17 +6,33 @@
 import { TILE, PLAYER } from './config.js';
 import { ITEMS } from './items.js';
 import { heldId, take } from './inventory.js';
-import { isAir, applyPlacedHp } from './world/tiles.js';
+import { isAir, applyPlacedHp, stampMulti, TILE_DEFS } from './world/tiles.js';
 import { overlap } from './physics.js';
 import { showHint } from './ui/hints.js';
 
-// Can this item go at (c, r) right now, and if not, why not. Exported for tests/tools.
+// The extra cells (beyond (c, r) itself) a currently-held placeable's footprint occupies, if
+// it's the kind of thing DESIGN §5.8 calls multi-cell (a 2-tall door, say) — [] for everything
+// single-cell. `item.make(1)` is a cheap, side-effect-free tile constructor call just to read
+// its kind; the `insideDir` passed doesn't matter here, only the resulting tile's `kind` does.
+function footprintOf(item) {
+  if (!item?.make) return [];
+  return TILE_DEFS[item.make(1).kind].footprint || [];
+}
+
+// Can this item go with its anchor at (c, r) right now, and if not, why not. Checks every cell
+// of its footprint, not just the one under the cursor. Exported for tests/tools.
 export function canPlaceAt(state, c, r) {
-  const { world, player: p, zombies } = state;
-  if (!world.inBounds(c, r)) return { ok: false, why: 'out of bounds' };
-  if (!isAir(world.get(c, r))) return { ok: false, why: 'not empty' };
-  const rect = world.rectOf(c, r);
-  if (overlap(p, rect) || zombies.some(z => !z.stunned && overlap(z, rect))) return { ok: false, why: 'blocked' };
+  const { world, player: p, zombies, inventory } = state;
+  const item = ITEMS[heldId(inventory, state.held)];
+  const cells = [[0, 0], ...footprintOf(item)].map(([dc, dr]) => [c + dc, r + dr]);
+  for (const [cc, rr] of cells) {
+    if (!world.inBounds(cc, rr)) return { ok: false, why: 'out of bounds' };
+    if (!isAir(world.get(cc, rr))) return { ok: false, why: 'not empty' };
+  }
+  for (const [cc, rr] of cells) {
+    const rect = world.rectOf(cc, rr);
+    if (overlap(p, rect) || zombies.some(z => !z.stunned && overlap(z, rect))) return { ok: false, why: 'blocked' };
+  }
   const near = Math.hypot(p.x + p.w / 2 - (c * TILE + TILE / 2), p.y + p.h / 2 - (r * TILE + TILE / 2)) < PLAYER.REACH;
   if (!near) return { ok: false, why: 'too far' };
   return { ok: true, why: '' };
@@ -38,6 +54,6 @@ export function updatePlacement(state) {
   const insideDir = Math.sign(p.x + p.w / 2 - (c * TILE + TILE / 2)) || 1;
   const tile = applyPlacedHp(item.make(insideDir));
   tile.back = world.get(c, r)?.back ?? null;
-  world.set(c, r, tile);
+  stampMulti(world, c, r, tile);
   take(state.inventory, { [id]: 1 });
 }

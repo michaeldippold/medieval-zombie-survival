@@ -29,11 +29,15 @@ export function drawWeapon(ctx, kind) {
   }
 }
 
+// Helmet band and visor as fractions of the body box rather than fixed pixels, so the flat-
+// colour placeholder (DESIGN §16 — real art replaces this a tile at a time) still reads as a
+// head near the top of a two-tall body instead of a thin stripe lost above a tall slab.
 export function drawPlayer(ctx, p, aim, held) {
   ctx.fillStyle = p.hurt > 0 ? COLORS.playerHurt : p.dead ? COLORS.playerDead : COLORS.player;
   ctx.fillRect(p.x, p.y, p.w, p.h);
-  ctx.fillStyle = COLORS.playerHelm; ctx.fillRect(p.x, p.y, p.w, 6);
-  ctx.fillStyle = COLORS.playerVisor; ctx.fillRect(p.facing > 0 ? p.x + p.w - 12 : p.x + 4, p.y + 10, 8, 3);
+  const helm = p.h * 0.16, visorW = p.w * 0.32, visorH = p.h * 0.05, visorY = p.h * 0.25, inset = p.w * 0.15;
+  ctx.fillStyle = COLORS.playerHelm; ctx.fillRect(p.x, p.y, p.w, helm);
+  ctx.fillStyle = COLORS.playerVisor; ctx.fillRect(p.facing > 0 ? p.x + p.w - inset - visorW : p.x + inset, p.y + visorY, visorW, visorH);
   if (!p.dead) { ctx.save(); ctx.translate(p.x + p.w / 2, p.y + p.h / 2); ctx.rotate(aim); drawWeapon(ctx, held); ctx.restore(); }
 }
 
@@ -57,10 +61,13 @@ export function drawZombie(ctx, e) {
   }
   ctx.fillStyle = e.flash > 0 ? '#ffffff' : e.color; ctx.fillRect(e.x + lx, e.y, e.w, e.h);
   if (e.flash > 0) return;
-  ctx.fillStyle = COLORS.zombieBrow; ctx.fillRect(e.x + lx, e.y, e.w, 5);
+  // Brow/eyes near the top of the box, wounds near the bottom — as fractions of e.h so the
+  // face doesn't end up stranded near the top of a much taller two-tall body (DESIGN §6.1).
+  const browH = e.h * 0.08, eyeY = e.y + e.h * 0.15;
+  ctx.fillStyle = COLORS.zombieBrow; ctx.fillRect(e.x + lx, e.y, e.w, browH);
   ctx.fillStyle = COLORS.zombieEye;
   const eyeX = e.x + lx + (e.dir < 0 ? 5 : e.dir > 0 ? e.w - 14 : 10);
-  ctx.fillRect(eyeX, e.y + 9, 4, 4); ctx.fillRect(eyeX + 6, e.y + 9, 4, 4);
+  ctx.fillRect(eyeX, eyeY, 4, 4); ctx.fillRect(eyeX + 6, eyeY, 4, 4);
   ctx.fillStyle = COLORS.wound;
   for (let i = 0; i < ZOMBIE.HP - e.hp; i++) ctx.fillRect(e.x + lx + 4 + i * 8, e.y + e.h - 8, 5, 4);
   if (e.scramble) {                                     // claw marks toward the ledge it's fighting for

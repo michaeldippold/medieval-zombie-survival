@@ -2,7 +2,7 @@
 import { TILE, PLAYER, TOOLS } from './config.js';
 import { ITEMS } from './items.js';
 import { heldId } from './inventory.js';
-import { defOf, harvestTile, airAfter, isSolid, TOOL_NAMES } from './world/tiles.js';
+import { defOf, harvestTile, airAfter, isSolid, footprintCells, TOOL_NAMES } from './world/tiles.js';
 import { spawnDrop } from './entities/drops.js';
 import { showHint } from './ui/hints.js';
 
@@ -25,7 +25,13 @@ export function updateTools(state, dt) {
 
   const res = harvestTile(t, item.tool);
   if (res.wrongTool) { showHint(state, `needs ${TOOL_NAMES[res.wrongTool]}`); return; }
-  if (res.removed) world.set(c, r, airAfter(t, world.isUnderground(c, r))); else world.touch();
+  if (res.removed) {
+    // A multi-cell tile (a 2-tall door, DESIGN §5.8) is dismantled whole: clear every cell of
+    // its footprint, not just the one the player is aiming at, so no `part` is left orphaned
+    // pointing at an anchor that no longer exists.
+    const anchor = t.kind === 'part' ? t.anchor : t;
+    for (const [cc, rr] of footprintCells(anchor)) world.set(cc, rr, airAfter(anchor, world.isUnderground(cc, rr)));
+  } else world.touch();
   if (res.drop) {
     // A per-hit drop from a block that's still there must not spawn inside it: use the nearest
     // free neighbour on the player's side, and send it toward the player.

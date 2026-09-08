@@ -1,6 +1,6 @@
 // Draws the world from state. Reads only; never mutates state.
 import { TILE as T, VIEW, COLORS } from '../config.js';
-import { isPortal } from '../world/tiles.js';
+import { isPortal, TILE_DEFS } from '../world/tiles.js';
 import { ITEMS } from '../items.js';
 import { heldId } from '../inventory.js';
 import { paintTile } from './tiles.js';
@@ -45,9 +45,16 @@ export function render(ctx, state) {
   if (state.ghost) {
     const g = state.ghost;
     const insideDir = Math.sign(pcx - (g.c * T + T / 2)) || 1;
-    ctx.save(); ctx.globalAlpha = 0.5; paintTile(ctx, g.c, g.r, ITEMS[g.itemId].make(insideDir)); ctx.restore();
+    const proto = ITEMS[g.itemId].make(insideDir);
+    // A multi-cell placeable (a 2-tall door, DESIGN §5.8) previews and outlines every cell of
+    // its footprint, not just the one under the cursor — `proto` draws identically in each,
+    // same as the live tile does once `stampMulti` links its `part`(s) to it.
+    const cells = [[0, 0], ...(TILE_DEFS[proto.kind].footprint || [])].map(([dc, dr]) => [g.c + dc, g.r + dr]);
+    ctx.save(); ctx.globalAlpha = 0.5;
+    for (const [cc, rr] of cells) paintTile(ctx, cc, rr, proto);
+    ctx.restore();
     ctx.strokeStyle = g.ok ? COLORS.ghostOk : COLORS.ghostBad; ctx.lineWidth = 2;
-    ctx.strokeRect(g.c * T - 1, g.r * T - 1, T + 2, T + 2);
+    for (const [cc, rr] of cells) ctx.strokeRect(cc * T - 1, rr * T - 1, T + 2, T + 2);
   } else if (state.target) {
     ctx.strokeStyle = state.target.near ? COLORS.accent : 'rgba(242,177,52,0.4)'; ctx.lineWidth = 2;
     ctx.strokeRect(state.target.c * T - 2, state.target.r * T - 2, T + 4, T + 4);

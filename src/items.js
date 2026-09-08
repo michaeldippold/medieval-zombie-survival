@@ -44,10 +44,13 @@ export const STARTER_EXTRA = { slot: 5, id: 'arrow', n: 10 };
 // (see ITEMS above). A tree's yield is amplified here, not by piling up more/taller trees:
 // each trunk tile gives one log 1:1, and one log saws into four planks — four times the
 // building material per tree, no farming required, one block still equals one item.
+// wall/floor give 2 per plank, not 1 (2026-09-08, DESIGN §6.1): rooms are taller now that
+// bodies are two tiles tall, so building one costs more tiles for the same floor plan — this
+// keeps it from also costing proportionally more trees.
 export const CRAFTS = [
   { id: 'planks',     label: 'Planks ×4',    cost: { log: 1 },   gives: { plank: 4 } },
-  { id: 'wall',       label: 'Timber wall',  cost: { plank: 1 }, gives: { wall: 1 } },
-  { id: 'floor',      label: 'Plank floor',  cost: { plank: 1 }, gives: { floor: 1 } },
+  { id: 'wall',       label: 'Timber wall ×2', cost: { plank: 1 }, gives: { wall: 2 } },
+  { id: 'floor',      label: 'Plank floor ×2', cost: { plank: 1 }, gives: { floor: 2 } },
   { id: 'wall_stone', label: 'Stone wall',   cost: { stone: 1 }, gives: { wall_stone: 1 } },
   { id: 'ladder',     label: 'Ladder',       cost: { plank: 1 }, gives: { ladder: 1 } },
   { id: 'door',       label: 'Door',         cost: { plank: 2 }, gives: { door: 1 } },

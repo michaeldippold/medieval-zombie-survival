@@ -14,7 +14,12 @@ import { showHint } from './ui/hints.js';
 // `ui.openCraft()` opens the craft palette where the menu was opened.
 export function menuItemsForTile(state, c, r, ui) {
   const { world, player: p, zombies, inventory: inv } = state;
-  const t = world.get(c, r);
+  // Every read below (isPortal, portalName, defOf, ...) already resolves a `part` to its
+  // anchor internally, but a *mutation* here is a plain `t.field = ...`, not a call through
+  // one of those — done on a raw part wrapper that would silently miss the shared door state
+  // entirely. Resolve once, up front, so every `t.` below is always the real, shared tile.
+  const raw = world.get(c, r);
+  const t = raw?.kind === 'part' ? raw.anchor : raw;
   const items = [];
   if (p.dead || !world.inBounds(c, r)) return [{ label: 'Cancel' }];
 
@@ -34,7 +39,7 @@ export function menuItemsForTile(state, c, r, ui) {
       if (t.broken) items.push({ label: `${name} is broken`, disabled: true });
       else if (t.open) items.push({ label: blocked ? `Close ${name} (blocked)` : `Close ${name}${far}`, primary: true, disabled: !near || blocked, run: change(() => { t.open = false; }) });
       else items.push({ label: `Open ${name}${far}`, primary: true, disabled: !near, run: change(() => { t.open = true; }) });
-      if (def.climbThrough && !isSolid(t)) items.push({ label: `Climb through${far}`, primary: true, disabled: !near, run: () => { p.x = c * TILE + (TILE - p.w) / 2; p.y = r * TILE + TILE - p.h; p.vy = 0; } });
+      if (def.climbThrough && !isSolid(t)) items.push({ label: `Climb through${far}`, primary: true, disabled: !near, run: () => { p.x = c * TILE + (TILE - p.w) / 2; p.y = (t.footAt?.r ?? r) * TILE + TILE - p.h; p.vy = 0; } });
     }
     if (t.bars < PORTAL.MAX_BARS) {
       const openUnbroken = t.open && !t.broken;

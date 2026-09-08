@@ -43,8 +43,12 @@ export const TILE_DEFS = {
   wall_stone: { solid: true,  opaque: true, hp: 900, harvest: { tool: 'pick', hits: 6, drop: 'wall_stone' } },
   floor:      { solid: true,  opaque: true, hp: 120, harvest: { tool: 'axe', hits: 2, drop: 'floor' } },
   ladder:     { solid: false, opaque: false, hp: 40, climbable: true, harvest: { tool: 'axe', hits: 1, drop: 'ladder' } },
-  door:       { portal: true, hp: 150, name: 'door',     barFrom: 'inside', harvest: { tool: 'axe', hits: 3, drop: 'door' } },
-  shutter:    { portal: true, hp: 60,  name: 'shutter',  barFrom: 'inside', climbThrough: true, harvest: { tool: 'axe', hits: 2, drop: 'shutter' } },
+  // Two tiles tall (DESIGN §5.1/§6.1): a body this height needs a door taller than one tile to
+  // fit through anything with a solid wall above it. `footprint` names the extra cell(s) a
+  // placed instance occupies, relative to the anchor cell it's placed at — see `stampMulti`.
+  // The trapdoor stays one tall; it's floored, not walked through vertically.
+  door:       { portal: true, hp: 150, name: 'door',     barFrom: 'inside', harvest: { tool: 'axe', hits: 3, drop: 'door' }, footprint: [[0, -1]] },
+  shutter:    { portal: true, hp: 60,  name: 'shutter',  barFrom: 'inside', climbThrough: true, harvest: { tool: 'axe', hits: 2, drop: 'shutter' }, footprint: [[0, -1]] },
   hatch:      { portal: true, hp: 120, name: 'trapdoor', barFrom: 'above',  climbableWhenOpen: true, harvest: { tool: 'axe', hits: 3, drop: 'hatch' } },
 
   // Proves the `contact` hook (DESIGN §5.3/§8): a rule-ful block that's still just a row plus
@@ -70,12 +74,34 @@ export function applyPlacedHp(tile) {
   return tile;
 }
 
-export const defOf = t => TILE_DEFS[t.kind];
-export const isPortal = t => !!t && !!TILE_DEFS[t.kind].portal;
+// A multi-cell tile (DESIGN §5.8) is one real tile object — the anchor, built by `makeTile`
+// like any other — plus a lightweight `{ kind: 'part', anchor }` wrapper written into every
+// other cell its def's `footprint` names. Every predicate below resolves a part straight to
+// its anchor (one level of recursion, no world lookup needed, since `anchor` is a direct object
+// reference) so callers never need to know or care whether the cell they're looking at is the
+// anchor or a part. Only a mutation done *inline* by a caller (not through one of these
+// functions) has to resolve first — see interactions.js.
+export function stampMulti(world, c, r, anchor) {
+  anchor.footAt = { c, r };
+  world.set(c, r, anchor);
+  for (const [dc, dr] of TILE_DEFS[anchor.kind].footprint || []) world.set(c + dc, r + dr, { kind: 'part', anchor });
+  return anchor;
+}
+
+// Every cell a multi-cell tile occupies, anchor first, as [c, r] pairs — what a removal has to
+// clear, or a placement ghost has to preview, in full.
+export function footprintCells(anchor) {
+  const { c, r } = anchor.footAt;
+  return [[c, r], ...(TILE_DEFS[anchor.kind].footprint || []).map(([dc, dr]) => [c + dc, r + dr])];
+}
+
+export const defOf = t => t.kind === 'part' ? defOf(t.anchor) : TILE_DEFS[t.kind];
+export const isPortal = t => !!t && (t.kind === 'part' ? isPortal(t.anchor) : !!TILE_DEFS[t.kind].portal);
 export const isAir = t => !t || t.kind === 'air';
 
 export function isSolid(t) {
   if (!t) return false;
+  if (t.kind === 'part') return isSolid(t.anchor);
   const d = TILE_DEFS[t.kind];
   if (d.portal) return t.bars > 0 || (!t.open && !t.broken);
   return d.solid;
@@ -87,28 +113,31 @@ export const isOpaque = isSolid;
 
 export function isClimbable(t) {
   if (!t) return false;
+  if (t.kind === 'part') return isClimbable(t.anchor);
   const d = TILE_DEFS[t.kind];
   return !!d.climbable || (!!d.climbableWhenOpen && !isSolid(t));
 }
 
-export const portalName = t => TILE_DEFS[t.kind].name || t.kind;
+export const portalName = t => t.kind === 'part' ? portalName(t.anchor) : (TILE_DEFS[t.kind].name || t.kind);
 // The `contact` def for a tile, if any (e.g. spikes' { dmg, cooldown }) — a generic hazard hook
 // any body's update step can check without knowing which tile kinds use it.
-export const contactDamage = t => t ? TILE_DEFS[t.kind].contact ?? null : null;
+export const contactDamage = t => !t ? null : t.kind === 'part' ? contactDamage(t.anchor) : (TILE_DEFS[t.kind].contact ?? null);
 
 // A tile a zombie can chew through: a portal, or anything with finite *current* hp. Checking
 // the instance (t.hp), not the def, is what lets a placed dirt block (finite, via placedHp)
 // differ from the natural dirt around it (still Infinity) while sharing one tile kind.
 export function canZombieDamage(t) {
   if (!t) return false;
+  if (t.kind === 'part') return canZombieDamage(t.anchor);
   return !!TILE_DEFS[t.kind].portal || Number.isFinite(t.hp);
 }
-export const maxHp = t => TILE_DEFS[t.kind].hp ?? 0;
+export const maxHp = t => t.kind === 'part' ? maxHp(t.anchor) : (TILE_DEFS[t.kind].hp ?? 0);
 
 // Combined "how broken does this look" for painters: zombie damage or player digging, whichever
 // is further along. Uses the instance's own starting hp (t.maxHp, set at placement time for a
 // tile whose hp doesn't match its def — see placedHp above) when present, else the def's.
 export function integrity(t) {
+  if (t.kind === 'part') return integrity(t.anchor);
   const d = TILE_DEFS[t.kind];
   const startHp = t.maxHp ?? d.hp;
   const byHp = Number.isFinite(t.hp) && startHp > 0 ? t.hp / startHp : 1;
@@ -117,8 +146,11 @@ export function integrity(t) {
 }
 
 // Zombie damage. Bars first, then the tile. A portal at 0 HP is broken (stuck open).
-// Returns 'bar' | 'barBroke' | 'hit' | 'broke' | null.
+// Returns 'bar' | 'barBroke' | 'hit' | 'broke' | null. Redirecting to the anchor here (rather
+// than at the call site) is what makes a 2-tall door one door regardless of which half a
+// zombie is punching: the mutation lands on the shared object either way.
 export function damageTile(t, dmg) {
+  if (t.kind === 'part') return damageTile(t.anchor, dmg);
   if (t.bars > 0) {
     t.barHp -= dmg;
     if (t.barHp <= 0) { t.bars--; t.barHp = PORTAL.BAR_HP; return 'barBroke'; }
@@ -137,8 +169,10 @@ export function damageTile(t, dmg) {
 }
 
 // Player harvesting with a tool. Returns null if the tile can't be harvested at all,
-// { wrongTool: needs } if the tool doesn't match, else { removed, drop }.
+// { wrongTool: needs } if the tool doesn't match, else { removed, drop }. Redirects to the
+// anchor exactly like damageTile — chip away at either half, the progress is shared.
 export function harvestTile(t, tool) {
+  if (t.kind === 'part') return harvestTile(t.anchor, tool);
   const h = TILE_DEFS[t.kind].harvest;
   if (!h) return null;
   if (h.tool !== 'any' && h.tool !== tool) return { wrongTool: h.tool };

@@ -1,4 +1,4 @@
-// 40×40 item icons for the hotbar and inventory panel. A placeable item draws as its own tile
+// TILE×TILE item icons for the hotbar and inventory panel. A placeable item draws as its own tile
 // (via ITEMS[id].make) with zero extra code — add a new placeable and its icon just works.
 import { TILE, COLORS } from '../config.js';
 import { ITEMS } from '../items.js';
