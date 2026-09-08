@@ -249,9 +249,10 @@ still one function.
       part cells (frame/leaf colours present, not a flat fill) and at both cells on open
       (both flip to the same "opening" colour), then walked the real input/update loop
       through the open door and up the loft ladder with no console errors
-- [ ] **Not done — real playtesting.** All of the above is mechanically verified; none of it
-      is *felt* yet. Jump arc, combat spacing, and the new room proportions need an actual
-      play session before the numbers are trusted
+- [x] **Real playtesting** (2026-09-08, Michael, extended session). Confirmed: the 28×60
+      two-tall proportions read right and no longer "cigarette"-shaped; a one-wide vertical
+      shaft (a dug shaft, the hatch column) feels correct to drop down, not cramped; the game
+      is fun as built. Verdict: proceed with more features, not more scale changes
 - [-] ~~The 1-tall window variant (sight, not entry)~~ — superseded: it falls out of glass
       blocks for free (a broken 1-tall pane is a hole nothing fits through). Phase 3b
 - [ ] **Not done — cave tunnel height.** Existing `WORLDGEN.CAVES` radii (`ry` 1–2, so 3–5
@@ -426,6 +427,12 @@ Built here, early, so every later phase keeps it green instead of retrofitting.
       pick); `speed` multiplier; "needs a stone pickaxe" hint
 - [ ] Wood → stone → iron tool and weapon rows + recipes + stations; iron ore below the stone
       line; smelt at the furnace
+- [ ] **Spear** and **crossbow**: a second melee and a second ranged line, not reskins of the
+      sword/bow (DESIGN §13) — promoted from backlog 2026-09-08 so "sword and bow" was never
+      the entire weapon roster, only the starting one. Spear: longer `REACH`, narrower arc,
+      different wind-up/recovery than the sword. Crossbow: slower `COOLDOWN` than the bow,
+      more `DMG`, a load animation instead of instant-ready. Each tiers the same way (wood →
+      stone → iron) once they exist, rather than being an iron-only unlock
 - [ ] Durability: non-stacking tool/weapon/shield slots `{id, n:1, dur}`; `give()` never
       merges them; wear per use; break with a hint; wear bar under the icon. **Own commit**
 - [ ] Offhand slot beside the hotbar; `shield` item: passive front block, no infection roll,
@@ -513,12 +520,18 @@ unarmed body + the existing aim-at-mouse weapon overlay.
 ## Backlog (unscheduled, keep or kill later)
 
 - Rope ladder you can pull up
-- Zombies stacking to reach high shutters (see DESIGN §17)
-- Crossbow, spear
+- Zombies stacking to reach high windows (see DESIGN §17)
+- ~~Crossbow, spear~~ — promoted to Phase 11, 2026-09-08 (not a reskin of sword/bow — see there)
 - ~~Two-tile-tall player~~ — decided 2026-09-08: **two tall**, Phase 3 (DESIGN §6.1, §17)
-- Fences (solid, not opaque) — first tile where the two predicates differ
+- Fences (solid, not opaque) — glass (§5.4b) beat this to being the first tile where the two
+  predicates differ; fences would be the second
 - Zombie-side spikes contact (reuse `contactDamage` in `updateZombies`)
 - Waterskin (carried water)
+- Found/improvised weapons in ruins (a pitchfork, a fire poker, a scythe) — medieval-flavored
+  loot texture, raised 2026-09-08 weighing modern's "saucepan or crowbar" appeal; doesn't need
+  a new system, just loot-table entries once loot tables exist (§5.6)
+- Low-fantasy creatures/items (a goblin, a magic staff) — explicitly not ruled out by the
+  setting (DESIGN §3), not scheduled
 
 ## Decisions log
 
@@ -581,3 +594,7 @@ unarmed body + the existing aim-at-mouse weapon overlay.
 - 2026-09-08 — **Shutters deleted; windows are glass blocks** (DESIGN §3, §5.4b). A shutter was a door with different art — same portal state machine, same bars, same 2-tall footprint — and two mechanically identical things is what "systems over content" forbids. Glass is `solid: true, opaque: false`, the first tile where the two predicates split: sight through, bodies not, weak, attackable, gone when broken. **Window height is risk**: a broken 2-tall pane is an entry, a broken 1-tall pane isn't — and nothing in the code knows the word "window". Not medieval; "more fun" wins the one place they conflict. Sand → glass is what a desert is for. Triggered by looking up how Terraria actually does it.
 - 2026-09-08 — **A curtain is state on a glass block, not a tile** (DESIGN §5.4b, §11). A curtain *tile* has to be as tall as the window it covers, which made "how tall is a window" a rule. State on the glass needs no size: hold a curtain, right-click glass, it's curtained; toggle opens/closes the whole vertical run; closed = opaque = the house seals. **Attachments** (the general rule): an item consumed onto a block that *changes what the block is*, and the tell is the drop — **one item for the block as it now is** (`glass_curtained`), never the block plus the attachment, which would say "stacked" when the truth is "changed". Bars are spent, not attached: a plank each, gone when the door comes down.
 - 2026-09-08 — **Bodies 28 wide, one-wide shafts stay** (DESIGN §6.1). The width question is really "do one-wide vertical shafts exist"; yes, so 28 is the ceiling (2px a side). 0.47 is Terraria's own collision-box ratio; their chunkiness is a few px of arm overdraw on real sprites. A 1.5× visual-only overdraw was tried and reverted uncommitted: it clips into every wall you stand against and makes visible hits miss. A flat box looks like a pole at any width; the ratio is for the art to be drawn into.
+- 2026-09-08 — **Medieval setting reconfirmed** after weighing modern (fridges, cars, backpacks, improvised weapons). The game's differentiator (enclosure zombies exploit, compounding threat, no win condition) lives in the mechanic, not the setting, so this was safe to reconsider on its own merits. It came back to medieval because dig-anywhere/mine-tiers/climbable-mountains doesn't sit under a modern suburb (the honest modern version needed rural/small-town), most of the promised texture has a free medieval equivalent (wagon for car, root cellar for fridge, sack for backpack), and "no guns" stops being free the moment it's modern. See DESIGN §3.
+- 2026-09-08 — **"Low fantasy" means real headroom, not a decorative label.** A goblin, a magic staff, a cursed blade are not ruled out by the setting later — the label already said this, it was just never spelled out. Not scheduling any of it now.
+- 2026-09-08 — **Spear and crossbow promoted from backlog to Phase 11**, so sword+bow was never meant to be the entire weapon roster forever, only the starting one. Distinct lines (reach/arc for the spear, rate-of-fire/damage/load for the crossbow), not reskins, each tiering the same wood→stone→iron way.
+- 2026-09-08 — **28×60 bodies and one-wide vertical shafts confirmed correct by an actual extended play session** (Michael) — closes Phase 3's playtest gap. Verdict: proceed with features, not more scale changes.

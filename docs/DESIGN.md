@@ -74,6 +74,26 @@ Decisions get checked against these. If a feature doesn't serve at least one, it
 
 **Medieval, low fantasy, no guns.** The dead have risen; nobody knows why; it does not matter.
 
+**Low fantasy means headroom, not decoration** (clarified 2026-09-08 — it was already the
+label, just never spelled out). "The dead have risen" already isn't real-world logic. A
+goblin, a magic staff, a cursed blade can all exist here later without becoming a different
+game, as long as they stay sparse and grounded rather than a spell-slinging loadout — the
+zombies are still the point. Nothing here commits to any of it; the point is that nothing in
+"medieval" is a rule that forecloses it either.
+
+**Medieval reconfirmed 2026-09-08**, after a real look at going modern. The reasons: this
+game's actual differentiator — enclosure as a spatial state zombies exploit, threat that
+compounds, no win condition, the day counter as score — lives in the *mechanic*, not the
+setting, so the setting was always free to reconsider on its own merits, not a threat to the
+game's identity either way. What tipped it back to medieval: the dig-anywhere, mine-tiers,
+climb-a-mountain identity this game already has doesn't sit naturally under a modern suburb's
+pavement and foundations — the honest modern version needed to be rural/small-town to keep
+it, at which point most of the *texture* modern promised (cars, fridges, density) turns out to
+already have a medieval equivalent (a wagon, a root cellar, a hamlet) at no cost to any system
+already built. And "no guns" is free and self-explaining in medieval; the moment it's modern,
+"why doesn't anyone have a gun" is a real question, and answering it re-opens exactly the
+audio/ammo/noise complexity that was the reason guns were cut in the first place.
+
 Why medieval (decided, not up for relitigation without new information):
 
 - ~~Windows are **shutters** (open / closed / barred), not glass.~~ **Reversed 2026-09-08.**
@@ -895,6 +915,12 @@ There is no story, so progress must be *visible in the world*:
      arrowheads tier (stone, iron) for damage. Each tier is a `CRAFTS` row and a station
      (§5.8): wood at hand, stone at a workbench, iron at a furnace (smelt ore → ingot) then
      the workbench.
+   - **That's one melee line and one ranged line getting better material, not the whole
+     weapon roster** (flagged 2026-09-08 — durability and hunger keep you replacing gear and
+     going back out, but neither one gives you a second *kind* of weapon). Spear and crossbow
+     are the real second lines, promoted from backlog into Phase 11: a spear trades the
+     sword's arc for reach and a different timing, a crossbow trades the bow's rate of fire
+     for damage and a load animation. Neither is a reskin of the other line.
    - The starter loadout becomes a **loot table entry** in the first prefab, not a gift: the
      house you find has an axe in a chest, if you look. `STARTER_LOADOUT` survives as a debug
      option only.
