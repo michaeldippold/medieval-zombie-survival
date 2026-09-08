@@ -205,8 +205,12 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
       tiles at 2× = 32 matches the character density exactly.
 - [ ] Confirm an *unarmed* knight sprite exists (weapons are baked into most poses). Plan: unarmed
       body + the existing aim-at-mouse weapon overlay, so free aim survives the art pass.
-- [ ] Matching 16px tileset (dirt, grass, stone, planks, bark, leaves, door, shutter, trapdoor,
-      ladder). Painters become sprite blits; the default painter path stays for prototypes.
+- [ ] 16px block tileset — **draw it ourselves.** Searched 2026-09-07: no off-the-shelf side-view
+      *block* tilesets exist; "side-scroller" packs are platformer scenery with front-facing
+      façades that make no sense in a world you cut through. ~15 tiles (dirt, grass, stone,
+      planks, bark, leaves, door, shutter, trapdoor, ladder, stone wall, bedrock, backwalls).
+      Replace painters one at a time; the default painter stays as the fallback. Art is parked
+      until systems are done; flat colour is a feature while bugs are still being found.
 - [ ] Sprite sheet loader + animation state per entity (idle / walk / jump / death), flip by facing
 - [ ] Sprite pass (swap painters only)
 - [ ] Audio pass
