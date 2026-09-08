@@ -76,8 +76,13 @@ Decisions get checked against these. If a feature doesn't serve at least one, it
 
 Why medieval (decided, not up for relitigation without new information):
 
-- Windows are **shutters** (open / closed / barred), not glass. Three states, all legible, no
-  "broken glass" ambiguity.
+- ~~Windows are **shutters** (open / closed / barred), not glass.~~ **Reversed 2026-09-08.**
+  A shutter turned out to be a door with different art — same state machine, same bars, same
+  footprint — and two mechanically identical things is what pillar 6 forbids. Windows are
+  **glass** (§5.4b): a block that is solid but not opaque, the first tile where those two
+  predicates differ. Not period-correct; "what is more fun" outranks "what is medieval"
+  when they conflict, and this is the one place they do. It also gives a desert biome its
+  reason to exist (sand → glass, §5.6).
 - Doors are **barred from inside**. A spatial rule with tactical consequences.
 - **No firearms** means no audio dependency for the core feel, no ammo economy to balance
   early, no noise mechanic required for combat to make sense.
@@ -177,9 +182,11 @@ natural tile is a raw material; on a built tile it is the tile's own item id (§
 | `wall_stone` | yes | yes | 900 | pick ×6 → wall_stone | structure, placeable, 1 stone |
 | `floor` (planks) | yes | yes | 120 | axe ×2 → floor | structure, placeable, 1 plank |
 | `ladder` | no | no | 40 | axe ×1 → ladder | structure, climbable; placeable, 1 plank |
-| `door` | state | state | 150 | axe ×3 → door | structure/portal, bars from inside; 2 plank |
-| `shutter` | state | state | 60 | axe ×2 → shutter | structure/portal, climb-through when open; 1 plank |
+| `door` | state | state | 150 | axe ×3 → door | structure/portal, bars from inside; 2 plank; 2 tall |
+| `glass` | **yes** | **no** / curtain | 40 | pick ×1 → glass, or glass_curtained | structure; solid, see-through; curtain closed = opaque (§5.4b); from a furnace (sand) or found |
 | `hatch` | state | state | 120 | axe ×3 → hatch | structure/portal in a floor, bars from above; 2 plank |
+
+*(`shutter` removed 2026-09-08 — it was a door with different art. See §3 and §5.4b.)*
 
 **Solidity is fixed per kind by what the kind is *for*, in three tiers — never toggled by
 natural-vs-placed origin** (settled 2026-09-08, after placed log blocks accidentally turned
@@ -193,7 +200,7 @@ felled trees into free walls):
   material" rule — a felled log put back down is still a tree, not a wall. `ITEMS.log.make()`
   literally builds a `trunk` tile: no separate "log block" tile kind, no separate rule to keep
   in sync.
-- **Structure** (wall, floor, wall_stone, ladder, door, shutter, hatch) — always solid (ladders
+- **Structure** (wall, floor, wall_stone, ladder, door, glass, hatch) — always solid (ladders
   climb-through by design). The one tier whose entire purpose is to be a barrier; the only way
   into it is a recipe (§7.3), never digging something up.
 
@@ -236,9 +243,9 @@ system, just a def and a value in an existing check.
 Future: `chest`, `workbench`, `bed`, `well`, `torch` (decorative until lighting exists),
 `fence` (solid, not opaque — the first split).
 
-### 5.4 Portals: doors, shutters, trapdoors
+### 5.4 Portals: doors and trapdoors
 
-One state machine for all three:
+One state machine for both:
 
 ```
 state ∈ { closed(hp), open, broken }     bars ∈ 0..2, each with its own barHp
@@ -247,12 +254,44 @@ opaque = solid
 ```
 
 - **Open/close** from either side, if nothing is standing in the tile.
-- **Bar** only from the "inside" side (`insideDir` for doors/shutters; above for hatches),
-  only when closed (or broken — barring a broken door is the repair).
+- **Bar** only from the "inside" side (`insideDir` for doors; above for hatches), only when
+  closed (or broken — barring a broken door is the repair). A bar costs a plank (see §11,
+  attachments — it was free, which was the inconsistency).
 - **Damage** goes to bars first, then the portal's own HP. At 0 the portal becomes `broken`,
   which behaves as permanently open.
-- **Climb through** an open or broken shutter: the player is placed into the tile and walks
-  out the far side. Zombies do the same automatically.
+
+### 5.4b Windows: glass and curtains (decided 2026-09-08)
+
+**Glass** is a plain structure block with one unusual property: `solid: true, opaque: false`.
+The first tile where the two predicates split (§5.1 kept them apart for exactly this). What
+falls out, with no rules beyond that one:
+
+- **Sight passes through it, bodies don't.** You see out; they see in. A house with an
+  uncurtained window is *exposed*. Zombies attack it like any solid block with finite hp,
+  and it's weak (40) — the window is the weak point of a house, as it should be.
+- **Window height is risk.** Glass breaks like a wall breaks: at 0 hp it's gone, and the cell
+  is air. A 2-tall window, broken, is a hole a 2-tall zombie walks through. A 1-tall window at
+  head height, broken, is a hole nothing fits through — sight in, no entry. The builder
+  chooses, block by block, and nothing in the code knows the word "window".
+- **Free placement.** Glass is a block like stone. One pane, a wall of it, an all-glass house.
+  A "window" is just the word for glass in a wall.
+- **Boarding up** is placing a wall block inside it. Emergent, no code.
+- **Made or found.** Sand → furnace → glass (Phase 8, §5.8); until then glass is found in
+  prefabs, which carry it from the start. Sand is what a desert biome is *for* (§5.6).
+
+**A curtain is state on a glass block**, not a tile — the way bars are state on a door. Hold a
+curtain item, right-click glass: the item is consumed and the block is now curtained, with an
+open/closed state. **Closed means opaque**: the flood-fill stops there, the house seals, you
+can sleep. Open means see-through again. Toggling one curtained block toggles every curtained
+glass block touching it vertically, so one click works the whole window. Curtain every pane of
+an all-glass house or don't — uncurtained glass is sight, and sight is exposure. That is the
+whole game in one block. No size question ever comes up because there is no curtain object
+with a size. Dismantling curtained glass drops one **curtained glass** item, not two — it is
+a changed block, not a stack (§11, attachments).
+
+*Why not a shutter or a curtain tile:* a shutter was a door with different art. A curtain
+*tile* has to be as tall as the window it covers, which made "how tall is a window" a rule
+the code had to know. State on the glass needs neither.
 
 ### 5.5 Harvesting, digging and placing
 
@@ -407,7 +446,8 @@ grids, and one thing of each per cell** (decided 2026-09-08; an earlier draft ha
 "mount" grid — dropped, Terraria lives without it and so can we):
 
 - **Background grid** — background walls: `bg_plaster`, `bg_plank`, `bg_stone`, `bg_earth`,
-  and `bg_window` (a wall that *draws* a window; fake 3D, no effect on vision). Placeable
+  (`bg_window` dropped 2026-09-08 — glass §5.4b is the window; two window concepts was the
+  problem being solved). Placeable
   items; "the background style of your house". Worldgen writes `bg_earth` behind anything dug
   or caved underground and the prefab's own choice inside buildings.
 - **Foreground grid** — everything else, including furniture (§5.8) and things that hang on
@@ -510,13 +550,22 @@ The one-tall ruling bought one-tile tunnels and tiny sprites. Neither is worth t
 home that 1.0 is built around (§5.1, §1.1). Done as its own early phase, before any prefab is
 exported or any art is drawn, while the house is still one function. What changes:
 
-- `TILE` 40 → 32; player ≈ 24×60, zombie ≈ 26×60 (16×32 art at 2×). The logical viewport
+- `TILE` 40 → 32; player and zombie **28×60** (16×32 art at 2×). The logical viewport
   grows from 960×560 to **1280×720** — 40×22 tiles instead of 24×14 — or a two-tall player is
   a seventh of the screen and the game feels like a phone. About eleven player-heights per
   screen is the target. Px-based tunables (speeds, reach, sight) scale by 0.8 and get re-played.
-- **Doors and shutters are two tall** (anchor + part, §5.8). A one-tall *window* at head
-  height becomes something zombies can break for *sight* but not *entry*; only a two-tall
-  window is climb-through. That distinction didn't exist before and it's a good one.
+- **Body width is set by one question: do one-wide vertical shafts exist?** (decided
+  2026-09-08: yes.) A one-wide hatch, ladder column or dug shaft needs a body narrower than a
+  tile with a little slack; 28 is the ceiling (2px a side). Terraria's answer is no — its
+  bodies are wider than a tile, and every hellevator is two blocks wide. We keep one-wide
+  shafts: they're what makes digging feel like Minecraft rather than Terraria. 28×60 is a
+  width-to-height of 0.47, which is Terraria's own *collision box* ratio (≈20×42); its
+  chunkier look is sprite overdraw for arms, a few px, not a wider box. A flat placeholder box
+  looks like a pole at any width — that's the box, not the ratio. The ratio is for the art to
+  be drawn into. No visual overdraw beyond a few px of limb on real sprites: a box drawn much
+  wider than its hitbox clips into every wall it stands against and makes visible hits miss.
+- **Doors are two tall** (anchor + part, §5.8). Windows are glass blocks, any height — and a
+  window's height *is* its risk (§5.4b), a rule that only exists because bodies are two tall.
 - **Tunnels are two tall.** Horizontal digging costs double; vertical shafts stay one wide.
   Digging in gets slower, which was the worry about underground bases anyway.
 - **Step climbing** generalises from "one passable tile above the obstacle" to "the body fits
@@ -662,11 +711,11 @@ also cleared (not inherited) when a wanderer picks up a sighting from `attention
 shared point's y isn't known to have been grounded.
 
 ### 8.4 Breaking in
-A blocked zombie looks at the column in front of it — its own row and one row above — for a
-solid portal, and attacks it. Shutters (60) go in three hits; doors (150) in eight; each bar
-(100) in five. A broken shutter is an entry: the zombie steps up through it (§6). Walls and
-floors are attackable in the same way with much higher HP; this is what makes material tiers
-matter.
+A blocked zombie looks at the column in front of it — its own rows and one row above — for a
+solid, attackable tile, and attacks it. Glass (40) goes in two hits; doors (150) in eight;
+each bar (100) in five. Broken glass is gone: a 2-tall window becomes an entry, a 1-tall one
+becomes a hole to see through (§5.4b). Walls and floors are attackable in the same way with
+much higher HP; this is what makes material tiers matter.
 
 ### 8.4b Obstacles by height
 What a blocked, chasing zombie does depends on how tall the obstacle is:
@@ -718,10 +767,16 @@ on; you don't see through it). Sight spreads 4-way, lighting spreads 8-way — t
 is deliberate: no peeking through diagonal gaps, no dark corners in your own house. If the
 fill reaches the top row, the player is **exposed**; otherwise **sealed**.
 
+**Opaque is no longer solid** (2026-09-08). Glass is solid and see-through; a closed curtain
+on it is solid and opaque; a decoration that blocks sight but not bodies is possible later
+(a hung banner, a hedge). `isOpaque` reads a def's `opaque` field (default: same as `solid`)
+plus per-tile state (`curtain === 'closed'`). Nothing in the fill changed.
+
 Consequences, all of which are intentional and none of which required extra code:
-- A shuttered house is dark outside and lit inside. Open one shutter and the whole outside
+- A curtained house is dark outside and lit inside. Open one curtain and the whole outside
   appears at once. This is binary on purpose: side-view line-of-sight produces no useful
-  shapes, enclosure does.
+  shapes, enclosure does. An uncurtained window means the house is never sealed — so a
+  house you can sleep in is a house with curtains.
 - Multi-room buildings seal per room. A closed trapdoor makes the loft its own world.
 - A basement with a shaft is exposed until the shaft is capped.
 - Entities outside the visible set are not drawn. You cannot see a zombie the model says you
@@ -762,7 +817,15 @@ Wounds are drawn as notches so remaining HP is readable without a bar.
 
 - **Materials**: dirt, timber (from trees), stone, iron (from ore + a furnace). Each is a
   wall/floor/door tier with rising HP: timber 300 / stone 900 / iron-banded 2000.
-- **Bars** are the universal reinforcement (+100 HP each, max 2, inside only).
+- **Bars** are the universal reinforcement (+100 HP each, max 2, inside only). One plank each,
+  and spent: they're nailed on. Tear the door down and the planks are gone.
+- **Attachments** (rule, 2026-09-08): a curtain on glass — later a lock, a torch bracket, iron
+  banding — is an item consumed onto a block that **changes what the block is**. It becomes
+  state on that block, not a second thing in the cell and not a new tile kind. The tell is
+  what drops when you dismantle it: **one item, for the block as it now is** — "curtained
+  glass", not glass plus a curtain. Two separate items would say "stacked"; one says
+  "changed", which is the truth. So every attachment that survives dismantling has an item id
+  of its own (`glass_curtained`), placeable, which places the block already changed.
 - **Repair**: hammer on a damaged tile restores HP at a material cost.
 - **Stations** (§5.8): workbench (wood and stone goods), furnace (smelting), fireplace
   (cooking). Recipes are data; `station` on a recipe gates it.
@@ -996,7 +1059,7 @@ tables and `(state, dt)` functions in the update order.
 
 ## 17. Open questions
 
-- Should zombies stack (stand on each other) to reach upstairs shutters? Fun, horrifying,
+- Should zombies stack (stand on each other) to reach upstairs windows? Fun, horrifying,
   but it makes every second storey reachable. Leaning no until walls have tiers.
 - ~~Two-tile-tall player?~~ **Resolved 2026-09-08: yes, two tall** (§5.1, §6.1). Closed
   earlier the same day as "no" on the grounds that prefabs would bake in door heights — the
@@ -1012,7 +1075,10 @@ tables and `(state, dt)` functions in the update order.
 ## 18. Glossary
 
 - **Exposed / sealed** — the enclosure boolean (§9).
-- **Portal** — a door, shutter, or trapdoor: a tile with open/closed/broken + bars.
+- **Portal** — a door or trapdoor: a tile with open/closed/broken + bars.
+- **Attachment** — an item consumed onto a block that changes what the block is, dropping as
+  one changed item: a curtain on glass (§11). Bars are spent, not attached.
+- **Glass / curtain** — the solid-but-see-through block, and the state that makes it opaque (§5.4b).
 - **Attention** — the shared "someone saw the player here" point (§8.2).
 - **Step climb** — the one-tile mount rule (§6).
 - **Background layer** — the grid behind the play plane: background walls and things mounted

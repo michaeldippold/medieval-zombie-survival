@@ -234,8 +234,8 @@ still one function.
       (footprint-aware `canPlaceAt`/ghost) and `tools.js` (footprint-clearing removal) both
       use it; `interactions.js` resolves a part to its anchor once, up front, before any
       direct field mutation (a redirect-on-read wasn't enough there — see its comment)
-- [x] Doors and shutters are 2 tall via anchor/part. The separate 1-tall breakable `window`
-      variant (sight without entry) was **not** built this pass — noted below, not forgotten
+- [x] Doors and shutters are 2 tall via anchor/part. *(Shutters were then removed outright —
+      see Phase 3b. The 2-tall mechanism stays for doors.)*
 - [x] House rebuilt: interior 9 rows (was 7) — 4 ground floor, 1 loft floor, 4 loft — door on
       the front wall, a matching ground window opposite it, a window per wall in the loft
 - [x] Wall/floor recipes give 2 per plank instead of 1
@@ -250,11 +250,41 @@ still one function.
 - [ ] **Not done — real playtesting.** All of the above is mechanically verified; none of it
       is *felt* yet. Jump arc, combat spacing, and the new room proportions need an actual
       play session before the numbers are trusted
-- [ ] **Not done — the 1-tall window variant** (sight, not entry) from the original plan
+- [-] ~~The 1-tall window variant (sight, not entry)~~ — superseded: it falls out of glass
+      blocks for free (a broken 1-tall pane is a hole nothing fits through). Phase 3b
 - [ ] **Not done — cave tunnel height.** Existing `WORLDGEN.CAVES` radii (`ry` 1–2, so 3–5
       rows) weren't changed or specifically re-checked against the new body height; likely
       fine (§ analysis says so) but not played
 - [ ] `docs/ADDING.md` still doesn't exist (carried over from 2c, not new here)
+
+## Phase 3b — Body width, glass, curtains (DESIGN §6.1, §5.4b, §11)
+
+Two follow-ups from playing the scale change: bodies looked like cigarettes, and a shutter
+turned out to be a door with different art.
+
+- [ ] Bodies 24/26 → **28** wide (both). One-wide shafts stay, so 28 is the ceiling. Verify
+      by dropping through the house hatch and a dug 1-wide shaft; re-run the Phase 3 checks
+- [ ] **Delete the shutter**: tile def, item, recipe, painter, `climbThrough` flag, the house's
+      three shutters, the under-canvas help text, the editor's seed asset
+- [ ] `isOpaque` stops aliasing `isSolid`: reads `def.opaque ?? def.solid`, then per-tile
+      state (`t.curtain === 'closed'`). Vision is otherwise untouched
+- [ ] `glass` tile: `solid: true, opaque: false`, hp 40, `harvest: pick ×1`, drops `glass` —
+      or `glass_curtained` if it carries a curtain. Placeable item `glass`; painter (pale,
+      see-through-looking, with a visible pane edge). Not craftable until the furnace (Phase 8):
+      found in the house prefab only, for now
+- [ ] `curtain` item (2 plank): right-click glass with it held → consumed, `t.curtain =
+      'closed'`. Right-click curtained glass → Open/Close, toggling every curtained glass
+      block touching it vertically. `glass_curtained` placeable item (places glass with
+      `curtain: 'open'`). Painter draws the curtain over the pane when closed
+- [ ] Bars cost a plank and are spent on dismantle (DESIGN §5.4)
+- [ ] House prefab: the ground-floor window opposite the door becomes 2-tall glass; one loft
+      window 2-tall glass, the other **1-tall at head height** so height-is-risk is visible
+      on day one; curtains on the ground-floor one so the house can still be sealed
+- [ ] Node checks: sight passes through glass and stops at a closed curtain; a body is blocked
+      by glass; a broken 1-tall pane doesn't admit a body, a broken 2-tall one does; curtained
+      glass drops one `glass_curtained`
+- [ ] Editor seeds: remove `shutter`; add `glass`, `glass_curtained`, `curtain`
+- [ ] Played: seal the house by closing curtains; watch a zombie come through the window
 
 ## Phase 4 — Editor and asset pipeline (DESIGN §16) — parallel track ✅ 2026-09-08
 
@@ -295,8 +325,8 @@ Two grids, one thing of each per cell — no mount grid.
 - [ ] `world.back[r][c]` as a real grid; `back` field on foreground tiles removed. Pure
       migration commit — maps.js, airAfter, renderer, isUnderground — **zero behaviour
       change**, verified by playing the same seed before/after
-- [ ] Background wall defs: `bg_earth`, `bg_plaster`, `bg_plank`, `bg_stone`, `bg_window`
-      (fake window, no vision effect) as tile rows with their own painter slot
+- [ ] Background wall defs: `bg_earth`, `bg_plaster`, `bg_plank`, `bg_stone` as tile rows with
+      their own painter slot (`bg_window` dropped — glass is the window, Phase 3b)
 - [ ] Items `layer: 'back'`; placement.js routes them; `canPlaceAt` for back walls
       (foreground air/decoration). Same ghost + stamp
 - [ ] Foreground placement rules `needsWall` (torch, painting) and `needsFloor` (furniture)
@@ -546,3 +576,6 @@ unarmed body + the existing aim-at-mouse weapon overlay.
 - 2026-09-08 — **No seasons; biome is climate** (DESIGN §5.6). Meadow is always summer, snow always winter. The day counter is the only clock and pressure is what changes with it; seasons would multiply biome art by four. Gives a cold moodle the fireplace answers, and a real reason to defer water: meadow and mountain, the first two biomes, have none.
 - 2026-09-08 — **A biome earns its place or it isn't added**: cost of being there / how you pay it *there* / what you can only get there. A biome that's a one-minute day trip before going home to the plains isn't worth its art. Snow's answer: snow blocks and igloos, furs → a cloak, and zombies sluggish in the cold. (DESIGN §5.6 table)
 - 2026-09-08 — **World size**: hundreds of columns, walkable in a few in-game days, not Terraria-scale. Flat array, no chunking; simulation (tick radius, spawn margin) is what scales with width. Worldgen v2 gets a design conversation before code (TODO Phase 13).
+- 2026-09-08 — **Shutters deleted; windows are glass blocks** (DESIGN §3, §5.4b). A shutter was a door with different art — same portal state machine, same bars, same 2-tall footprint — and two mechanically identical things is what "systems over content" forbids. Glass is `solid: true, opaque: false`, the first tile where the two predicates split: sight through, bodies not, weak, attackable, gone when broken. **Window height is risk**: a broken 2-tall pane is an entry, a broken 1-tall pane isn't — and nothing in the code knows the word "window". Not medieval; "more fun" wins the one place they conflict. Sand → glass is what a desert is for. Triggered by looking up how Terraria actually does it.
+- 2026-09-08 — **A curtain is state on a glass block, not a tile** (DESIGN §5.4b, §11). A curtain *tile* has to be as tall as the window it covers, which made "how tall is a window" a rule. State on the glass needs no size: hold a curtain, right-click glass, it's curtained; toggle opens/closes the whole vertical run; closed = opaque = the house seals. **Attachments** (the general rule): an item consumed onto a block that *changes what the block is*, and the tell is the drop — **one item for the block as it now is** (`glass_curtained`), never the block plus the attachment, which would say "stacked" when the truth is "changed". Bars are spent, not attached: a plank each, gone when the door comes down.
+- 2026-09-08 — **Bodies 28 wide, one-wide shafts stay** (DESIGN §6.1). The width question is really "do one-wide vertical shafts exist"; yes, so 28 is the ceiling (2px a side). 0.47 is Terraria's own collision-box ratio; their chunkiness is a few px of arm overdraw on real sprites. A 1.5× visual-only overdraw was tried and reverted uncommitted: it clips into every wall you stand against and makes visible hits miss. A flat box looks like a pole at any width; the ratio is for the art to be drawn into.

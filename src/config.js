@@ -13,8 +13,11 @@ export const PHYSICS = { GRAV: 1440, MAX_FALL: 800 };
 
 export const WORLDGEN = { COLS: 120, ROWS: 40, SURFACE: 24, STONE_FROM: 32, TREES: 16, WIDE_TREE_CHANCE: 0.3, STONE_MOUNDS: 7, STONE_VEINS: 40, CAVES: 6, SEED: 7 };
 
+// 28 wide (2026-09-08): the widest a body can be and still drop through a one-tile shaft with
+// 2px a side — one-wide shafts stay, so this is the ceiling. 28/60 is Terraria's own hitbox
+// ratio; its chunkier look is a few px of arm on real sprites, not a wider box (DESIGN §6.1).
 export const PLAYER = {
-  W: 24, H: 60,
+  W: 28, H: 60,
   RUN_SPEED: 208, JUMP_V: -512, JUMP_CUT: -176,
   GROUND_BLEND: 18, AIR_BLEND: 8,
   CLIMB_SPEED: 144, SLIDE_SPEED: 56, LADDER_JUMP_GRACE: 0.3,
@@ -25,7 +28,7 @@ export const PLAYER = {
 export const INFECTION = { CHANCE: 0.25, TIME: 90, FEVER_AT: 0.6, FEVER_DRAIN: 0.4 };
 
 export const ZOMBIE = {
-  W: 26, H: 60, HP: 3,
+  W: 28, H: 60, HP: 3,
   SPEED_MIN: 44, SPEED_VAR: 56, CHASE_MULT: 1.3, CLIMB_SPEED: 44, CLIMB_DRIFT: 32,
   SIGHT_X: 304, SIGHT_Y: 208, MEMORY: 6,
   ATTACK_PERIOD: 0.9, ATTACK_DMG: 20, LUNGE: 0.15,
