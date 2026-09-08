@@ -22,6 +22,36 @@ means nothing can see you and you can see nothing. Exposed means you can see out
 see in. Every wall, door, shutter, bar and trapdoor exists to move that boolean, and every
 zombie behaviour is a consequence of it.
 
+### 1.1 What 1.0 is (decided 2026-09-08)
+
+*Minecraft's world, Terraria's camera, Zomboid's stakes.* You get a seeded world you can share
+by number, and you survive in it for as many days as you can. There is no win condition. **The
+day counter is the score**, and the death screen leads with it — "You survived 11 days." Every
+system below either makes a day harder to reach or gives you something to do with one.
+
+1.0 means all of the following are true:
+
+- **A world is a seed.** Type a number, get the same world as anyone else who typed it:
+  terrain with real height, biomes, trees, caves, and prebuilt buildings stamped into it (§5.6).
+- **Time passes and it shows.** Day/night with a day counter; night is dangerous; torches are
+  something you make and place because the dark is real — cosmetically only; light never
+  gates zombie senses (§12.1).
+- **A home is furnished, not just walled.** Background walls you choose, torches and paintings
+  on them, a chest that holds things, a bed you sleep in, a fireplace that cooks and a furnace
+  that smelts (§5.7, §5.8).
+- **You have needs.** Hunger, thirst, fatigue. Food from animals and scavenging, water from a
+  well, sleep from a bed. Moodles say how you're doing (§7.4, §14).
+- **You start with nothing.** Hands → wood → stone → iron tools and weapons; a shield;
+  everything wears out (§7.6, §13).
+- **Pressure climbs.** Zombies respawn and thicken with the day count; a base that held on
+  day 2 fails on day 5 without upgrades (§8.6).
+- **You can leave and come back.** Save/load, a title screen, continue (§15).
+- **The world has vertical range.** Mountains you climb, sky the camera follows you into, a
+  little fall damage (§5.6, §6).
+
+Explicitly **not** in 1.0 (post-1.0 backlog): armour, NPCs and trade, farming, flowing water,
+skills-by-use, stamina, zombie variants, a cure. Sound stays last.
+
 ## 2. Pillars
 
 Decisions get checked against these. If a feature doesn't serve at least one, it doesn't go in.
@@ -111,13 +141,14 @@ whether it is a portal, whether it is diggable, its drop.
 Drawn back to front:
 
 1. **Sky** — flat colour; day/night is a colour ramp on this and on the ambient overlay.
-2. **Backwall** — what is behind an air tile. `null` = sky. Dug-out earth shows dark dirt;
-   house interiors show plaster. Stored per tile as `back` on the air tile (air tiles with a
-   backwall are real objects with `kind: 'air'`).
-3. **Tiles** — the solid world.
+2. **Background layer** — what is behind the play plane. *Today*: a `back` paint tag on air
+   tiles (`'plaster'`, `'earth'`; `null` = sky). *Planned*: a real second grid holding
+   placeable background walls and wall-mounted objects (torches, paintings) — see §5.7.
+3. **Tiles** — the solid world (the foreground grid).
 4. **Entities** — zombies, player, arrows, dropped items.
-5. **Vision overlay** — every tile not in the visible set is darkened.
-6. **HUD** — screen-space.
+5. **Light** (planned, §12.1) — the ambient day/night overlay minus torch light.
+6. **Vision overlay** — every tile not in the visible set is darkened.
+7. **HUD** — screen-space.
 
 ### 5.3 Tile catalogue
 
@@ -260,8 +291,123 @@ Reasons not to stay: nothing grows down there — no wood, no food, no water wit
 and needs (§7.4) will force the trip up. Caves are the seam between the two: a found room is
 faster than a dug one, but you didn't choose its exits.
 
-Later: varied terrain, more structure types (barn, ruin, well), spawn points by distance.
 Nothing in the runtime may assume a particular layout.
+
+**Planned for 1.0 (§1.1):**
+
+- **A seed is the world's name.** The new-game screen takes a seed (number or string, hashed);
+  "random" fills one in. Only worldgen draws from the seeded RNG — runtime randomness (zombie
+  wander, drops) uses `Math.random()` and needn't be reproducible. Two players with the same
+  seed *and the same game version* get the same world; a worldgen change bumps a
+  `WORLDGEN.VERSION` shown beside the seed so nobody expects an old seed to match.
+- **Height.** The surface becomes a per-column line: rolling hills, and a few **mountains**
+  10–14 tiles tall with climbable faces (never a sheer 3+ face on a chase route — every step up
+  is ≤2, per §8.4b's rule that natural terrain never gives free protection). The world grows
+  upward to leave sky over the peaks (`ROWS` ~64, surface ~row 36); the camera already follows
+  Y. Vision's flood over open sky gets bigger, which is when the vision cache stops being
+  optional (§9, §16).
+- **Biomes** are per-column stretches selected from the seed: *meadow* (trees, animals),
+  *forest* (dense wide trees, less light), *rocky* (mounds, exposed stone, mountains), *ruins*
+  (more prefabs, more zombies). A biome is a table row: tree density, mound chance, prefab
+  pool, spawn table. Not a new system — a set of knobs worldgen already has.
+- **Prefabs** are painted, not coded. A prefab is a JSON file worldgen stamps onto the surface:
+
+  ```json
+  {
+    "name": "peasant_hut", "w": 9, "h": 6, "anchor": 5,
+    "tiles": [ ".........", "wwwwwwwww", "w.......w", "w.......w", "w.......w", "dwwwwwwww" ],
+    "back":  [ ".........", ".ppppppp.", ".ppppppp.", ".ppppppp.", ".ppppppp.", "........." ],
+    "legend": { "w": "wall", "d": { "kind": "door", "insideDir": 1 }, "p": "bg_plaster", "T": "torch" },
+    "markers": [ { "c": 4, "r": 4, "type": "loot", "table": "hut" }, { "c": 2, "r": 4, "type": "spawn", "kind": "zombie" } ]
+  }
+  ```
+
+  `tiles` is the foreground grid, `back` the background grid (§5.7), both as rows of legend
+  characters (`.` = nothing). `anchor` is the row that sits on the surface; worldgen flattens
+  the ground under the footprint and refuses the spot if it can't. A legend entry is either a
+  tile kind or a full `makeTile` extra. Markers are things the stamp can't express as a tile:
+  loot (a container filled from a named table), spawns, the player start. **This format is the
+  contract with the building-painting tool** — the tool emits exactly this; worldgen reads
+  exactly this; nothing else needs to know a prefab exists. First set: peasant hut, lumber
+  mill (logs, an axe), inn (beds, food, the biggest building), well, ruin (broken walls, loot,
+  zombies inside). The current hand-coded house becomes the first prefab file.
+- **Loot tables** are data too: `{ hut: [ { id: 'bread', n: [1,3], chance: 0.8 }, … ] }`.
+
+### 5.7 The background layer (planned — the first 1.0 architecture piece)
+
+Today `back` is a paint tag on an air tile (`'plaster'`, `'earth'`). It becomes a second grid,
+`world.back[r][c]`, holding real tile objects *behind* the play plane:
+
+- **Background walls** — `bg_plaster`, `bg_stone`, `bg_plank`, `bg_earth`. Placeable items;
+  what a room *looks like* from inside — "the background style of your house". Worldgen writes
+  `bg_earth` behind anything dug or caved underground and `bg_plaster` inside prefabs.
+- **Wall-mounted objects** — `torch`, `painting`, `banner`, `shelf`. They need a background
+  wall behind them (Terraria's rule). That rule is the whole reason to place background walls
+  in a room you already sealed, and the whole reason torches (§12.1) are something you *work
+  toward*: enclose, wall, mount, light.
+
+Rules:
+
+- The background layer **never** affects solidity, vision, zombies, or physics. It is only what
+  you see behind the play plane. `isSolid`/`isOpaque` never look at it.
+- A placeable item declares `layer: 'back'`; `placement.js` routes it into `world.back` instead
+  of `world.grid`. `canPlaceAt` for a back item needs the foreground cell to be air or
+  decoration (trunk/leaf), and for a *mounted* item, a background wall already there. The ghost
+  and stamp flow is otherwise identical — the held item is still the mode.
+- Two things can occupy one background cell: a wall and a thing mounted on it. Store the wall
+  in `world.back` and the mounted object in `world.mount` (a third sparse grid), or store the
+  mount as a field on the wall tile — decide at build time; the sparse grid is cleaner for the
+  renderer and for `lights`.
+- Harvesting on an air cell hits the mount first, then the wall, each with its own `harvest`
+  and each dropping its own item. Removing a wall drops whatever was mounted on it.
+- `airAfter` writes into `world.back`, not onto the air tile; the `back` field on foreground
+  tiles goes away. `isUnderground` keeps its meaning (natural earth backwall = `bg_earth`).
+- Rendering: `world.back` draws between sky and foreground; mounts draw on top of walls;
+  both are culled and cached the same way as the foreground.
+- Light (§12.1) collects emitters from mounts (torch) and the foreground (fireplace).
+
+The migration is mechanical (every `back:` in maps.js, tiles.js, renderer, vision) and should
+be one commit that changes no behaviour, followed by the commit that adds the first placeable
+background wall and the torch.
+
+### 5.8 Stateful tiles: containers, stations, beds (planned — the second architecture piece)
+
+Furniture is a **foreground tile**, in the decoration tier (§5.3): non-solid, non-opaque,
+walk-through — a chest in a one-tile corridor must not be a wall, and a bed you can't stand in
+front of is useless. It occupies the cell (you can't build a wall through it), has modest hp,
+is harvested with an axe and drops itself. It's opened with the existing right-click context
+menu — "Open", "Sleep", "Cook…", "Drink" — so the interaction system gains nothing new. What
+is new is that some tiles carry **state beyond `{hp, dig, bars…}`** and some **tick**:
+
+- **Containers** — `chest`, `barrel`, `crate`: `t.inv = createInventory(n)`. Opening one
+  shows the inventory window with two grids (yours, theirs) and drag between them — the
+  window already does drag-to-swap within one grid, so this is the same code over two
+  sources. Breaking a container spills its contents as drops. Prefab loot goes in these.
+- **Stations** — `workbench`, `furnace`, `fireplace`, `anvil`(later): a recipe's `station`
+  field (2c) gates it to the Craft palette when that station is within reach. Furnace and
+  fireplace also *process*: `t.inv` of `{ input, fuel, output }`, a `t.progress` timer that
+  advances every frame while there's fuel, a recipe table of its own (`ore → ingot`, `raw
+  meat → cooked`). Minecraft's furnace, exactly. Both emit light while burning (§12.1).
+- **Bed** — "Sleep": only when sealed and it's night; time skips to dawn; fatigue restores;
+  interrupted by a breach (any tile bordering the player's enclosure taking damage). The
+  bed is also where "survived another day" is most often *felt*.
+- **Well** — "Drink": infinite thirst source (§7.4). No state; listed here because it's the
+  first "furniture you find, not make".
+- **Decor** — `table`, `chair`, `bookshelf`, `rug`: no state, no action, just tiles in the
+  decoration tier. One row each. They exist so a home looks like one.
+
+**Ticking.** `world.tickers: Set<idx>` holds every tile whose def has `tick(state, t, dt)`;
+`world.set` adds/removes membership by def. A new system `updateTiles(state, dt)` runs them
+in the update order — never a grid scan. `world.lights` (§12.1) is the same mechanism.
+
+**Multi-tile furniture** (bed 2×1, table 2×1, a big painting 2×2): one *anchor* cell carries
+the state; the other cells are `part` tiles `{ kind: 'part', of: idx }`. Interacting with or
+breaking a part resolves to its anchor. Every grid question (solid/opaque/hp) stays
+answerable per cell. Don't build this until the second multi-tile thing exists — a bed can
+start as one tile.
+
+**Serialization** (§15): `inv` is plain data, `progress` a number; nothing here breaks the
+save rule, but `tickers`/`lights` are caches rebuilt on load, not saved.
 
 ## 6. Physics
 
@@ -278,6 +424,10 @@ Nothing in the runtime may assume a particular layout.
 - **Step climbing** (`tryClimb`): a body blocked horizontally whose obstacle is one tile with
   a passable tile above it is lifted into that tile and continues. This single rule is how
   zombies mount sills, climb through open shutters, and step off ladders onto floors.
+- **Fall damage** (planned with mountains, §5.6): landing with `vy` above a threshold (~ a
+  4-tile drop) costs HP scaling with the excess, capped well short of lethal from any height
+  you can actually reach; never infects (it's not a bite). Ladders and water (if ever) reset
+  it. Mild on purpose: a reason to build stairs, not a way to die.
 
 ## 7. The player
 
@@ -326,16 +476,44 @@ day one plays exactly as if the hotbar were fixed — it just isn't, underneath.
 - Item definitions in `items.js`: `kind` (`weapon` / `tool` / `material` / `placeable`),
   `tool` (which harvest.tool it matches), `ammo` (material it consumes), `make(insideDir)`
   (the tile a placeable becomes).
+- **Durability (planned, §7.6).** Tools, weapons and the shield stop stacking: such a slot
+  holds `{ id, n: 1, dur }` and `give()` never merges two of them (materials keep stacking
+  exactly as now). The def carries `maxDur`; a swing, a harvest hit or a blocked attack costs
+  1; at 0 the item breaks — removed with a hint, and the shield's break is a beat you feel.
+  A small bar under the icon shows wear. Repair at a workbench costs material. This is the
+  one change here that touches the inventory model itself; do it in its own commit.
+- **Consumables (planned, §7.4).** A `food`/`drink` kind: left click eats one from the stack
+  and restores a need. Same dispatch as everything else.
 
-### 7.4 Needs (not built yet — the next major system after digging)
+### 7.4 Needs (not built yet)
 - **Hunger**, **thirst**, **fatigue**. Each is a 0–100 meter that drains with time (faster
   when running/fighting). Low meters slow you and weaken swings; empty hunger/thirst drains
   HP. Fatigue is restored by sleeping in a bed, which passes time and is only safe if sealed.
 - These exist to force the player *out* of a sealed basement. Without them, digging in wins.
+- **Sources.** Hunger: scavenged food in prefabs (bread, dried meat — finite), raw meat from
+  animals (chicken, pig, deer via the entity registry), cooked at a fireplace (§5.8) for more.
+  Thirst: a **well** tile (found in prefabs, craftable from stone) — infinite, but you have to
+  *go to it*; carried water (a waterskin) is a later nicety. Fatigue: a bed.
+- **The long game.** Scavenged food runs out by design; animals **respawn** off-screen in
+  their biome so day 30 isn't starvation. Farming is the better answer and is post-1.0.
+- **Moodles** (§14) are how the player reads all of this. No numbers on the HUD by default.
 
-### 7.5 Stamina (later)
+### 7.5 Stamina (post-1.0)
 Zomboid's real difficulty dial. Swinging and running cost stamina; low stamina slows
 swings. Deferred until needs are in and tuned.
+
+### 7.6 Equipment: the offhand and the shield (planned)
+
+One slot beside the hotbar, the **offhand**, holds a shield (later a held torch, or nothing).
+A shield blocks a zombie attack arriving from the facing side (`player.facing` vs the
+attacker's centre): no damage, **no infection roll**, one point of shield durability, and a
+short stagger on the zombie so a block is also a beat. Attacks from behind land normally.
+Blocking is passive — no button; the decisions are *which way you're facing* and *whether the
+shield is still intact*. You can swing with a shield up; the price is that the shield wears out
+and you make another. Shield tiers follow materials: wood (cheap, ~15 blocks) → iron-banded.
+
+Armour (post-1.0) is more slots of this shape — head, body — each a damage reducer with
+durability. The offhand is the pattern; armour is copies of it.
 
 ## 8. Zombies
 
@@ -421,6 +599,13 @@ column before the next one walks across. That is emergent and intended.
 - Killed zombies are replaced from off-screen over time, so clearing an area is temporary.
 - The intended curve: day one is survivable in the open; by day five the open is death and
   the base's outer layer is failing.
+- **The curve is a function of the day counter** (§1.1) — target population, spawn rate and
+  night multipliers all read `state.time.day`. That's what makes "survive longer" an arc
+  instead of a plateau: the world you're in on day 12 is not the world of day 2. One config
+  block (`PRESSURE`), tuned by playing, never by formula alone.
+- Spawns happen off-screen (beyond the camera + a margin), on the surface or in caves, never
+  inside the player's current enclosure. A sealed base is never spawned into; it is only ever
+  broken into.
 
 ## 9. Vision: the enclosure model
 
@@ -473,28 +658,68 @@ Wounds are drawn as notches so remaining HP is readable without a bar.
 
 ## 11. Building and crafting (mostly not built)
 
-- **Materials**: dirt, timber (from trees), stone, iron (from ore + a forge). Each is a
+- **Materials**: dirt, timber (from trees), stone, iron (from ore + a furnace). Each is a
   wall/floor/door tier with rising HP: timber 300 / stone 900 / iron-banded 2000.
 - **Bars** are the universal reinforcement (+100 HP each, max 2, inside only).
 - **Repair**: hammer on a damaged tile restores HP at a material cost.
-- **Stations**: workbench (timber goods), stonemason's bench, forge. Recipes are data.
-- **The loop**: gather outside (exposed) → craft inside (sealed) → build (changes enclosure).
+- **Stations** (§5.8): workbench (wood and stone goods), furnace (smelting), fireplace
+  (cooking). Recipes are data; `station` on a recipe gates it.
+- **Furnishing** is building's second half (§5.7, §5.8): background walls, mounted torches
+  and paintings, chests, a bed, a table. None of it changes enclosure; all of it changes
+  whether the place feels like yours. Terraria's insight: the *room* is the reward.
+- **The loop**: gather outside (exposed) → craft inside (sealed) → build (changes enclosure)
+  → furnish (changes nothing but you).
 
 ## 12. Time
 
 - A day is ~10 real minutes. The sky and ambient overlay ramp through dawn/day/dusk/night.
-  No dynamic lighting; a lit sky *reads* lit.
+  `state.time = { t, day }`; the HUD shows the day and a sun/moon arc. Day 1 starts at dawn.
 - Night: zombies ×1.2 speed, +50% sight range, more spawns. Being outside at night should
   feel like a mistake.
 - Sleep (bed) passes time to dawn; only allowed when sealed; interrupted by a breach.
+
+### 12.1 Lighting (decided 2026-09-08: cosmetic only)
+
+Night is an ambient overlay whose alpha follows the clock. A **torch** — a background-layer
+object (§5.7), so it needs a wall behind it — emits light: a bounded flood from the torch
+through non-opaque tiles (radius ~6, falling off per step) that subtracts from the overlay.
+Lit tiles near a torch look like day; a room with no torch at night is dim enough to be
+unpleasant. Underground is always "night" without a torch.
+
+**Light never changes what zombies can see.** The enclosure model (§9) is the only sight rule
+and it stays binary. Torches exist because the dark is unpleasant to look at and a lit room
+reads as *home* — the reason to make and place them is aesthetic and it is enough. If a stealth
+layer is ever wanted, it goes on top as its own decision, not by making the light flood do
+double duty. Chosen over stealth-lighting because stealth would (a) blur the one clean rule the
+game has, (b) turn torches into a tactical liability, and (c) cost a second flood per zombie.
+
+Lights are gathered from `world.lights: Set<idx>`, maintained like tickers (§5.8) — a def with
+`light: { radius, color }` joins on `set`, leaves on removal. The light map is recomputed only
+when the world version changes; the per-frame cost is compositing, not flooding. Planned
+emitters: torch (back layer), fireplace and furnace while burning (foreground, §5.8), and later
+a held torch in the offhand (a moving light, recomputed per frame for that one source only).
 
 ## 13. Progression
 
 There is no story, so progress must be *visible in the world*:
 
 1. **Shelter tier**: a found house → barred → repaired → stone → a compound.
-2. **Tool tier**: bare hands → timber tools → stone → iron. Each unlocks tiles to dig and
-   things to build.
+2. **Tool tier**: bare hands → wood → stone → iron. Each unlocks tiles to dig and things
+   to build. *Planned detail (§1.1 "you start with nothing"):*
+   - You spawn with **nothing**. Bare hands can fell a trunk slowly and dig dirt slowly —
+     `harvest.hand: hits` on a def is the optional "hands can do it, badly" number; absent
+     means impossible by hand (stone, built walls). Punching a tree is the first thing you do.
+   - Tools and weapons carry `tier` (wood 1, stone 2, iron 3) and a `speed` multiplier on
+     harvest hits. A def's `harvest.tier` is the minimum: stone needs any pick, **iron ore**
+     (below the stone line, §5.6) needs a stone pick, iron-banded structures need iron to
+     dismantle. Wrong tier reads the same as wrong tool: "needs a stone pickaxe".
+   - Weapons per tier: wooden club → stone axe-blade → iron sword; the bow stays wood but
+     arrowheads tier (stone, iron) for damage. Each tier is a `CRAFTS` row and a station
+     (§5.8): wood at hand, stone at a workbench, iron at a furnace (smelt ore → ingot) then
+     the workbench.
+   - The starter loadout becomes a **loot table entry** in the first prefab, not a gift: the
+     house you find has an axe in a chest, if you look. `STARTER_LOADOUT` survives as a debug
+     option only.
 3. **Territory**: the map is bigger than what you can hold. Outposts, tunnels between them.
 4. **Skills by use** (optional, later): swing faster after many swings, dig faster after
    much digging. Zomboid-style; no skill trees to read.
@@ -509,15 +734,44 @@ Failure is permanent (permadeath per world). Worlds are cheap to start.
 - **Context menu** (DOM): right-click on a tile lists what you can do to it. Always ends in
   Cancel. Disabled items say *why* ("only from inside", "walk closer", "blocked").
 - **Hover hint**: interactable tiles get an outline under the cursor.
-- **Inventory** (DOM, later). **Crafting** (DOM, later).
-- **Death screen**: cause of death, R to restart.
+- **Inventory** (DOM): the window; **Crafting** (DOM): the palette. Planned: the same window
+  with a second grid for an open container (§5.8), and the offhand slot beside the hotbar (§7.6).
+- **Moodles** (planned, §7.4): a column of small status icons at the screen edge, Zomboid's
+  idea exactly — hungry / thirsty / tired / hurt / feverish / cold(later) — each with a severity
+  step shown as a colour and a one-word hover. The HP bar stays; the needs meters do **not**
+  get bars — a moodle appearing *is* the meter. Fever's existing tint becomes a moodle too.
+- **Death screen** (planned, §1.1): leads with **days survived**, then cause of death, kills,
+  tiles placed, and the seed (so you or a friend can try it again). R / New game / Title.
+- **Title and new game** (planned, §15): Title → *Continue* (if a save exists) / *New game*
+  (seed field, "random") / *Settings*. Pause menu gets *Save & quit to title*.
+- **First-time hints**: the paragraph under the canvas is not a tutorial. A dozen one-shot
+  hints ("press I for your pack", "right-click the ground to craft", "you're exposed — find
+  walls") fire on first relevance and never again per save. Data, not a system.
 
 ## 15. Saving
 
-Serialize `{ world.grid, player, zombies, time, inventory }` to JSON in `localStorage`
-(IndexedDB if worlds grow past a few MB). Autosave on sleep and every N minutes. One world
-per slot. Not built; the state object is designed to be serializable (no class instances
-with methods in the state tree, no closures).
+Serialize `{ seed, world.grid, world.back, entities, player, inventory, time, hintsSeen,
+stats }` to JSON in `localStorage` (IndexedDB if worlds grow past a few MB). Autosave on
+sleep and every N minutes, plus *Save & quit*. One world per slot; three slots. Not built;
+the state object is designed to be serializable (no class instances with methods in the state
+tree, no closures).
+
+**Promoted to mandatory for 1.0 and moved early (decided 2026-09-08).** A shareable seed plus
+multi-day survival means players must be able to leave and come back — and it is far cheaper
+to keep the state tree serializable *as* chests, furnaces and the background layer are added
+than to retrofit it after. So: the minimal save/load (one slot, no UI beyond a key) is built
+right after stateful tiles (§5.8) and every later phase keeps it green. Rules from now on:
+
+- Anything new in `state` is plain data. A `Set` or `Map` (tickers, lights, vision) is a
+  *cache* rebuilt on load, never saved.
+- `World` grows `toJSON()` / `World.fromJSON()`; tiles are already plain objects. Compress the
+  grid as run-length rows of kind ids plus a sparse list of tiles with non-default state (a
+  120×64 grid of full objects is too big for `localStorage` otherwise).
+- Entities save by `kind` + the fields their registry entry lists; transient AI (`lastSeen`,
+  `scramble`) is dropped and starts fresh on load — a zombie forgetting you across a reload is
+  fine.
+- Game version in the save; an older version refuses to load with a clear message rather than
+  half-loading. No migrations before 1.0.
 
 ## 16. Architecture
 
@@ -570,20 +824,59 @@ because zombies decide using this frame's visibility.
 
 **Tunables** live in `config.js` only. A number in a system file is a bug.
 
+**Planned files (1.0, see §16.1):** `src/world/back.js` (background/mount grids and their
+queries), `src/systems/time.js` (clock, day counter), `src/systems/light.js` (light map),
+`src/systems/tiles.js` (`updateTiles` over `world.tickers`), `src/systems/needs.js`,
+`src/systems/pressure.js` (spawning curve), `src/entities/index.js` (registry),
+`src/entities/body.js`, `src/entities/chicken.js`, `src/world/prefabs/*.json` +
+`src/world/prefab.js` (stamp), `src/world/loot.js`, `src/save.js`, `src/ui/containerPanel.js`
+(two-grid inventory), `src/ui/moodles.js`, `src/ui/title.js`, `src/ui/death.js`.
+
 **Growth vectors.** New content arrives along three data-driven paths — a block is a row in
 `TILE_DEFS` (plus a painter only if it has a distinctive look), a craft is a row in `CRAFTS`,
 an entity is a `create` + `decide` + `paint` registered by kind — and one design path: a
 system, which is a `(state, dt)` function in the update order. TODO Phase 2c is the work that
 makes the first three genuinely one-row. `docs/ADDING.md` (planned) is the checklist.
 
+### 16.1 Road to 1.0: build order (decided 2026-09-08)
+
+The 1.0 list (§1.1) is mostly content, but three items are architecture and everything else
+sits on them. Build in this order; each line depends on the ones above it.
+
+```
+entity registry (2c)  ─┬─► animals ──► food ──► needs ──► moodles
+                       └─► NPCs (post-1.0), zombie variants (post-1.0)
+background layer (§5.7) ──► torches ──► day/night + lighting (§12.1) ──► day counter = score
+                        └─► decor, house styling
+stateful tiles (§5.8)  ─┬─► chest (two-grid panel) ──► loot tables ──► prefabs (§5.6)
+                       ├─► bed ──► sleep/fatigue
+                       ├─► workbench/furnace stations ──► tiers (§13) ──► durability/shield (§7.6)
+                       └─► save/load (§15) — built right here, kept green after
+pressure (§8.6) — needs day counter; tuned last because everything above changes it
+world (§5.6) — seed UI, height, biomes, prefab stamping; last because prefabs need the
+               tile vocabulary (background walls, furniture, chests) to exist first
+menus, death screen, first-time hints (§14) — the wrapper; last
+```
+
+The three architecture pieces are each one focused commit with a proving feature: the
+registry proves itself with a chicken, the background layer with a torch on plaster, stateful
+tiles with a chest you can open. Nothing else in 1.0 needs new plumbing — it is rows in
+tables and `(state, dt)` functions in the update order.
+
 ## 17. Open questions
 
 - Should zombies stack (stand on each other) to reach upstairs shutters? Fun, horrifying,
   but it makes every second storey reachable. Leaning no until walls have tiers.
-- Two-tile-tall player? Would allow two-tile tunnels and taller doors. Costs every hand-built
-  structure. Decide before world generation, not after.
+- ~~Two-tile-tall player?~~ **Resolved 2026-09-08: no, and closed for good.** The prefab
+  painting tool is being built now and every building it produces bakes in door height,
+  ceiling height and corridor height. Changing the player's size after that costs every
+  painted building. One-tile-tall stays; it's also what makes one-tile tunnels and the
+  ladder/hatch/loft layouts work. Doors stay 1 tall; rooms can be any height.
 - Rope (a ladder you can pull up) vs trapdoor as the loft defence. Both, probably.
-- Cure or no cure.
+- Cure or no cure. (Post-1.0 either way.)
+- Furniture and zombies: furniture is decoration-tier (non-solid, §5.8) so it can never be a
+  barricade — but should a zombie *smash* a chest it walks through? Leaning no for 1.0; a
+  breached room losing its loot is a good later cruelty.
 
 ## 18. Glossary
 
@@ -591,3 +884,9 @@ makes the first three genuinely one-row. `docs/ADDING.md` (planned) is the check
 - **Portal** — a door, shutter, or trapdoor: a tile with open/closed/broken + bars.
 - **Attention** — the shared "someone saw the player here" point (§8.2).
 - **Step climb** — the one-tile mount rule (§6).
+- **Background layer** — the grid behind the play plane: background walls and things mounted
+  on them (§5.7). Never solid, never opaque.
+- **Stateful tile / ticker** — a foreground tile carrying an inventory or a timer, updated
+  from `world.tickers` (§5.8).
+- **Prefab** — a painted building stamped by worldgen from JSON (§5.6).
+- **Moodle** — a status icon standing in for a needs meter (§14).

@@ -170,7 +170,7 @@ one row plus one predicate. Do after 2b (crafting redo) so the item model is set
 ### Crafts (one row per recipe)
 - [x] Recipe validation at boot (part of `validate.js` above)
 - [ ] Optional `station` on a recipe; the Craft palette filters by stations within reach.
-      No station = craftable anywhere (arrows). Workbench is the first station (Phase 4).
+      No station = craftable anywhere (arrows). Workbench is the first station (Phase 5).
 - [x] Recipe icon defaults to its `gives` item's icon (`paintCraftIcon` in interactions.js —
       tile via `paintTile` if the item is placeable, else `paintItemIcon`)
 
@@ -193,45 +193,146 @@ one row plus one predicate. Do after 2b (crafting redo) so the item model is set
   order in `game.js`. Each gets a config block. No changes needed to make these "easy";
   they're design work, not plumbing.
 
-## Phase 3 — Needs and time (DESIGN §7.4, §12)
+---
 
-- [ ] Day/night: 10-minute day, sky colour ramp, ambient overlay ramp, day counter in HUD
-- [ ] Hunger / thirst / fatigue meters; drain rates; low-meter penalties; HP drain at zero
-- [ ] Food items and a water source (well tile); eat/drink via hotbar or context menu
-- [ ] Bed tile: sleep to dawn, only when sealed, interrupted by breach
-- [ ] Night zombie modifiers (speed, sight)
-- [ ] Played: survive three nights
+# Road to 1.0 (decided 2026-09-08 — DESIGN §1.1, §16.1)
 
-## Phase 4 — Building tiers and crafting (DESIGN §11)
+Phases 3–11 below replace the old Phases 3–8. They are ordered by *dependency*, not by how
+exciting they are: three architecture pieces first (background layer, stateful tiles, the
+entity split already listed in 2c), each proved by one small feature, then content on top.
+Each phase ends with a play session and a commit; nothing in a later phase may need plumbing
+an earlier one didn't build. Rule from Phase 5 on: **the save stays green** — every phase
+that adds state adds it to `save.js` in the same commit.
 
-- [ ] Materials: timber (trees, axe), stone (pick), iron (ore + forge). Iron ore only below the stone line — the first real reason to dig deep (DESIGN §5.6)
-- [ ] Underground finds: buried cellars/ruins with loot, clay, a water table
-- [ ] Wall/floor/door tiers with HP per DESIGN §5.3; zombies attack walls (slowly)
-- [ ] Hammer repair
-- [ ] Workbench: recipes gated by a nearby station (the palette already exists)
-- [ ] Arrows as items: finite, dropped on miss, recovered from corpses
-- [ ] Played: rebuild the house in stone
+## Phase 3 — The background layer (DESIGN §5.7)
 
-## Phase 5 — Pressure (DESIGN §8.6, §8.2 hearing)
+The Terraria loop: seal → wall → mount → light. Foundation for torches, decor, house styling.
 
-- [ ] Zombie population + off-screen respawn toward the player over days
-- [ ] Hearing: radius flood from combat/breaking; sealed ≠ silent
-- [ ] Horde events at night
+- [ ] `world.back[r][c]` (and sparse `world.mount`) as real grids; `back` field on foreground
+      tiles removed. Pure migration commit — maps.js, airAfter, renderer, isUnderground —
+      **zero behaviour change**, verified by playing the same seed before/after
+- [ ] Background wall defs: `bg_earth`, `bg_plaster`, `bg_plank`, `bg_stone` as tile rows with
+      their own painter slot (the default painter with a darker/flatter look)
+- [ ] Items `layer: 'back'`; placement.js routes them; `canPlaceAt` rules for back walls
+      (foreground air/decoration) and mounts (needs a back wall). Same ghost + stamp
+- [ ] Harvest on an air cell: mount first, then wall; each drops itself; removing a wall drops
+      its mount
+- [ ] Recipes: plank → 2 `bg_plank`, stone → 2 `bg_stone`, (clay later) → `bg_plaster`
+- [ ] First mounts: `torch` (light def only; not lit until Phase 4), `painting` (2 variants)
+- [ ] Validation: every `layer:'back'` item makes a back-layer kind; every mount def says so
+- [ ] Played: re-wall the house interior in plank, hang a painting, take it all down again
+
+## Phase 4 — Time and light (DESIGN §12, §12.1)
+
+The day counter is the score. Torches get their reason to exist.
+
+- [ ] `systems/time.js`: `state.time = { t, day }`, 10-minute day, dawn start; HUD day
+      counter + sun/moon arc
+- [ ] Sky colour ramp + ambient overlay alpha ramp through dawn/day/dusk/night
+- [ ] `world.lights` set (maintained by `world.set` from `def.light`) and `systems/light.js`:
+      bounded flood from each emitter through non-opaque cells, radius ~6, recomputed on
+      world version change only; composited against the ambient overlay. Underground = night
+- [ ] Torch crafts and emits; fireplace/furnace emit while burning (once Phase 5 exists)
+- [ ] Night zombie modifiers (speed ×1.2, sight +50%) — read `time`, in `ZOMBIE.NIGHT`
+- [ ] Death screen v1: leads with days survived (DESIGN §14)
+- [ ] Played: survive three nights; the house at night with and without torches
+
+## Phase 5 — Stateful tiles and furniture (DESIGN §5.8)
+
+Tiles that own things and tick. Furniture is decoration-tier: walk-through, never a wall.
+
+- [ ] `world.tickers` set + `systems/tiles.js` `updateTiles`; a def with `tick(state,t,dt)`
+      joins on set
+- [ ] `chest`: `t.inv`; `ui/containerPanel.js` — the inventory window with a second grid,
+      drag between grids (reuse the existing drag/swap; two sources); break → spill drops
+- [ ] Context-menu verbs on furniture: Open / Sleep / Cook… / Drink — data on the def
+      (`actions: ['open']`), not new code paths
+- [ ] `bed`: Sleep to dawn when sealed and night; interrupted by breach; restores fatigue
+      (fatigue itself lands in Phase 7 — sleeping just skips time until then)
+- [ ] `workbench`: recipe `station` gating (finish the 2c item); Craft palette lists
+      stations in reach
+- [ ] `fireplace` and `furnace`: `{input, fuel, output}` inv + `progress` tick + their own
+      process tables (raw meat → cooked; iron ore → ingot). Furnace UI = container panel
+      with three fixed slots
+- [ ] `well`: Drink (infinite); `table`, `chair`, `bookshelf`, `barrel` as plain decor rows
+- [ ] Multi-tile anchor/part — only if the bed or table needs 2 wide by now; otherwise defer
+- [ ] Played: furnish the house; store the loot; sleep through a night
+
+## Phase 6 — Save/load, minimal (DESIGN §15)
+
+Built here, early, so every later phase keeps it green instead of retrofitting.
+
+- [ ] `World.toJSON/fromJSON`: RLE rows of kind ids + sparse non-default tiles (both grids);
+      `inv` on tiles deep-copied
+- [ ] `save.js`: one slot in localStorage, F5-safe; F6 save / F7 load as the only UI for now;
+      version stamp; refuse older versions clearly
+- [ ] Entities save by registry `kind` + listed fields; transient AI dropped
+- [ ] Autosave on sleep
+- [ ] Played: save mid-siege, reload, the siege continues
+
+## Phase 7 — Entities, needs and food (DESIGN §7.4, 2c-entities)
+
+- [ ] **2c-entities first** (body split, registry, collision table, spawn table, chicken) —
+      this is the third architecture piece; it lives under 2c above and is a prerequisite here
+- [ ] Animals: chicken (meat), pig (more meat, slower), deer (flees fast, meadow only).
+      Respawn off-screen per biome so the long game isn't starvation
+- [ ] `food`/`drink` item kind: left click consumes; scavenged food in loot tables (bread,
+      dried meat); raw/cooked meat from animals + fireplace
+- [ ] `systems/needs.js`: hunger / thirst / fatigue meters, drain, penalties, HP drain at zero
+- [ ] `ui/moodles.js`: status icon column — hungry / thirsty / tired / hurt / feverish, with
+      severity steps; fever tint migrates here. No numeric meters on the HUD
+- [ ] Played: survive five days without the loot chests
+
+## Phase 8 — Tiers, durability and the shield (DESIGN §13, §7.6, §11)
+
+- [ ] Start with nothing; `harvest.hand` on trunk/dirt/leaf; the starter kit becomes a loot
+      entry in the first prefab's chest (`STARTER_LOADOUT` → debug flag)
+- [ ] `tier` on tools/weapons; `harvest.tier` minimums (stone: any pick; iron ore: stone
+      pick); `speed` multiplier; "needs a stone pickaxe" hint
+- [ ] Wood → stone → iron tool and weapon rows + recipes + stations; iron ore below the stone
+      line; smelt at the furnace
+- [ ] Durability: non-stacking tool/weapon/shield slots `{id, n:1, dur}`; `give()` never
+      merges them; wear per use; break with a hint; wear bar under the icon. **Own commit**
+- [ ] Offhand slot beside the hotbar; `shield` item: passive front block, no infection roll,
+      zombie stagger, durability; wood and iron shields
+- [ ] Hammer repair at the workbench
+- [ ] Wall/floor/door tiers: stone already; iron-banded door/wall (2000 hp)
+- [ ] Played: from nothing to an iron sword and a stone house
+
+## Phase 9 — Pressure (DESIGN §8.6)
+
+- [ ] `systems/pressure.js`: target population, spawn rate and night multipliers as
+      functions of `time.day`; off-screen spawns never inside the player's enclosure
+- [ ] More zombies on the map at start (biome spawn tables) — the current count is a
+      tutorial density
+- [ ] Horde events at night from day 3
+- [ ] Hearing (optional for 1.0): radius flood from combat/breaking; sealed ≠ silent
 - [ ] Played: a base that held on day 2 fails on day 5 without upgrades
 
-## Phase 6 — World generation (DESIGN §5.6)
+## Phase 10 — World (DESIGN §5.6)
 
-- [ ] Terrain line + stone depth + structure placement (house, barn, ruin, well)
-- [ ] Loot in structures
-- [ ] Spawn points away from the player start
-- [ ] Played: three fresh worlds feel different enough
+- [ ] Seed → hash → RNG; `WORLDGEN.VERSION`; seed shown in HUD/pause/death
+- [ ] Per-column surface line: hills; mountains 10–14 tall with ≤2-step faces; `ROWS`
+      grows upward; camera Y range; fall damage (DESIGN §6)
+- [ ] Vision cache keyed on (player tile, world version) — required now, not optional
+- [ ] Biomes as table rows: meadow / forest / rocky / ruins; tree density, mounds, prefab
+      pool, spawn table
+- [ ] Prefab format (DESIGN §5.6 JSON) + `prefab.js` stamp with ground flattening and
+      refusal; the current house becomes `prefabs/house.json`
+- [ ] Prefab set from the painting tool: peasant hut, lumber mill, inn, well, ruin
+- [ ] Loot tables; chests filled at stamp time
+- [ ] Played: three seeds feel different; a friend's seed matches
 
-## Phase 7 — Persistence (DESIGN §15)
+## Phase 11 — Menus and the wrapper (DESIGN §14, §15)
 
-- [ ] Serialize state; autosave on sleep and interval; world slots
-- [ ] Title screen: new / continue
+- [ ] Title: Continue / New game (seed field, random) / Settings
+- [ ] Pause: Resume / Save & quit to title; three save slots
+- [ ] Death screen v2: days, cause, kills, placed, seed, New game / Title
+- [ ] First-time hints (a dozen, one-shot per save, data)
+- [ ] Autosave interval
+- [ ] Played: a full session from title to death without touching the console
 
-## Phase 8 — Polish
+## Phase 12 — Polish
 
 ### Art direction (decided 2026-09-07): MiniFolks-style 16px characters at 2×
 Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers → NPCs, animals).
@@ -257,15 +358,28 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
 
 ---
 
+## Post-1.0 (explicitly out of 1.0 — DESIGN §1.1)
+
+- Armour slots (head/body) — copies of the offhand pattern (DESIGN §7.6)
+- NPCs and trade — needs right-click on *entities*, which nothing does yet
+- Farming (seeds, growth over days) — the real long-game food answer
+- Flowing water — Terraria-sized; the well covers thirst until then
+- Skills by use; stamina
+- Zombie variants (runner, brute); zombies smashing furniture in a breached room
+- Saplings / tree regrowth (wood's long-game answer)
+- Held torch in the offhand (a moving light)
+- Cure
+- Audio
+
 ## Backlog (unscheduled, keep or kill later)
 
 - Rope ladder you can pull up
 - Zombies stacking to reach high shutters (see DESIGN §17)
 - Crossbow, spear
-- Skills by use
-- Two-tile-tall player (decide before Phase 6)
+- ~~Two-tile-tall player~~ — closed 2026-09-08, stays one tall (DESIGN §17)
 - Fences (solid, not opaque) — first tile where the two predicates differ
-- Cure
+- Zombie-side spikes contact (reuse `contactDamage` in `updateZombies`)
+- Waterskin (carried water)
 
 ## Decisions log
 
@@ -309,3 +423,11 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
      it's faster to trust and immune to both of these.
 - 2026-09-08 — Dev workflow gotcha: the plain `python -m http.server` sends no cache headers, so the browser can silently keep serving stale JS modules across reloads while editing — cost real debugging time chasing a "bug" that was actually stale code. Fixed with `devserver.mjs` (sends `Cache-Control: no-store`); `.claude/launch.json` now uses it. If a change still doesn't seem to take effect after that, the browser's *disk* cache can still hold entries from before the switch — bump the dev port to get a clean origin rather than chasing it further.
 - 2026-09-07 — Combat numbers are **tuned**, not placeholders: two zombies in a room cost half your HP while playing carefully. `SWORD.*`, `ZOMBIE.HP`, `ZOMBIE.CONTACT_DMG` change only with a reason. Pressure systems (night, hordes, needs) stack on top of this baseline; don't re-tune the baseline to compensate for them.
+- 2026-09-08 — **Lighting is cosmetic only** (DESIGN §12.1). Day/night is an overlay ramp; torches subtract from it via a bounded flood; nothing about light ever feeds zombie senses. The enclosure model stays the one sight rule. Chosen because stealth-lighting would blur that rule, make torches a liability, and cost a flood per zombie. The reason to make torches is that a lit room reads as home — that's enough.
+- 2026-09-08 — **1.0 defined** (DESIGN §1.1): a shareable seed, day/night with the day counter as the score, a furnished home, needs, start-with-nothing tiers, climbing pressure, save/load, vertical range. Out: armour, NPCs, farming, flowing water, skills, stamina, variants, cure, audio.
+- 2026-09-08 — **Three architecture pieces before content** (DESIGN §16.1): the background layer (§5.7), stateful/ticking tiles (§5.8), and the entity registry (2c). Each is one focused commit proved by one feature (torch on plaster, an openable chest, a chicken). Everything else in 1.0 is rows in tables and `(state, dt)` functions.
+- 2026-09-08 — **Furniture is decoration-tier**: non-solid, non-opaque, walk-through, never a barricade. A chest in a one-tile corridor must not be a wall. Zombies ignore it for 1.0.
+- 2026-09-08 — **Save/load moves early** (new Phase 6, right after stateful tiles) and is mandatory for 1.0. Cheaper to keep the state tree serializable as chests/furnaces/back layer arrive than to retrofit. Sets/Maps in state are caches, rebuilt on load.
+- 2026-09-08 — **One-tile-tall player is final.** The prefab painting tool bakes door and ceiling heights into every building it produces; changing the player's size after that costs all of them.
+- 2026-09-08 — **Prefab JSON format is the contract with the painting tool** (DESIGN §5.6): `tiles`/`back` as legend-character rows, `legend` mapping to kinds or `makeTile` extras, `anchor` row on the surface, `markers` for loot/spawn/start. Worldgen reads exactly this; the tool emits exactly this.
+- 2026-09-08 — **Durability makes tools non-stacking** (`{id, n:1, dur}`, `give()` never merges them). The one 1.0 change that touches the inventory model itself; lands in its own commit in Phase 8.
