@@ -3,15 +3,44 @@
 // browsers happily serve stale JS across reloads while editing. python -m http.server doesn't
 // send this header, which cost a chunk of a session's worth of "verified in browser" checks.
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, mkdir, writeFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 
 const ROOT = process.cwd();
 const PORT = Number(process.argv[2] || 8080);
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
+const MAX_ASSET_BODY = 32 * 1024 * 1024;   // pixel-art JSON is verbose; generous but bounded
+
+// tools/editor's "Save to game" button POSTs its whole asset library here as one JSON object
+// and it's written verbatim to assets/manifest.json — the file the game's render/assets.js
+// fetches at boot. Single file, wholesale overwrite: one editor tab, no partial-merge bugs.
+function saveAssets(req, res) {
+  let body = '';
+  let tooBig = false;
+  req.on('data', chunk => {
+    body += chunk;
+    if (body.length > MAX_ASSET_BODY && !tooBig) { tooBig = true; res.writeHead(413); res.end('too large'); req.destroy(); }
+  });
+  req.on('end', async () => {
+    if (tooBig) return;
+    try {
+      const manifest = JSON.parse(body);
+      await mkdir(join(ROOT, 'assets'), { recursive: true });
+      await writeFile(join(ROOT, 'assets', 'manifest.json'), JSON.stringify(manifest));
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) {
+      res.writeHead(400, { 'Cache-Control': 'no-store' });
+      res.end(String(e));
+    }
+  });
+}
 
 createServer(async (req, res) => {
-  const path = normalize(join(ROOT, decodeURIComponent(req.url.split('?')[0])));
+  const pathname = decodeURIComponent(req.url.split('?')[0]);
+  if (req.method === 'POST' && pathname === '/assets') return saveAssets(req, res);
+
+  const path = normalize(join(ROOT, pathname));
   if (!path.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
   const file = path.endsWith('/') ? join(path, 'index.html') : path;
   try {

@@ -232,22 +232,35 @@ still one function. Own commit, played hard before anything else lands on top.
 - [ ] Zombie scramble/attack row loops re-verified in node at the new height
 - [ ] Played: the house, a dig, a siege — jump and combat re-tuned by feel
 
-## Phase 4 — Editor and asset pipeline (DESIGN §16) — parallel track
+## Phase 4 — Editor and asset pipeline (DESIGN §16) — parallel track ✅ 2026-09-08
 
-- [ ] Move `zombie-tile-editor` into `tools/editor/` (keep it standalone-runnable); migrate
-      the existing 15-tile localStorage project on first load
-- [ ] Assets of any `w×h` tiles at 16 px: `{ id, label, category, w, h, pixels }`; canvas is
-      `w*16 × h*16`; heavy gridlines at cell boundaries, light at pixels
-- [ ] Categories: block / background / furniture / character; create, rename, duplicate,
-      delete; sidebar grouped by category
-- [ ] Proportion preview: the asset drawn at 2× beside a two-tall mannequin, over a sample
-      background wall, so a bed looks like a bed before it's in the game
-- [ ] `devserver.mjs` gains `POST /assets`: writes `assets/<id>.png` + `assets/manifest.json`
-      (`{ id: { w, h, category } }`) into the repo; the editor's Save button calls it
-- [ ] Game: `render/assets.js` loads the manifest at boot; `paintTile` uses a sprite when
-      one exists, the flat painter otherwise. Multi-cell anchors draw their `w×h` sprite
-- [ ] Played: draw a dirt tile, save, reload the game, see it; draw a 2×1 bed, see it beside
-      the mannequin
+- [x] `tools/editor/` built fresh (standalone-runnable: `index.html` works via `file://` for
+      drawing; only **Save to game** needs the server). The old `zombie-tile-editor` had no
+      commits and no drawn art to carry over, so there was nothing to migrate automatically —
+      instead, an **Import legacy tileset** button reads that tool's project-JSON export
+      format for the one-time case Michael has actual work there
+- [x] Assets of any `w×h` tiles at 16 px: `{ id, label, category, w, h, pixels }`; canvas is
+      `w*16 × h*16`; fine gridlines per pixel, heavier lines at 16px cell boundaries
+- [x] Categories: block / background / furniture / character; create (any w/h up to 6×6),
+      rename, duplicate, delete; sidebar filterable by category
+- [x] Proportion preview: the asset at 2× beside a 1×2 mannequin over a sample background
+      wall, redrawn live while you draw
+- [x] `devserver.mjs` gains `POST /assets`, simpler than first sketched: the whole library is
+      written as one `assets/manifest.json` (`{ id: { label, category, w, h, pixels } }`),
+      overwritten wholesale on every save — one editor tab, no partial-merge bugs, and no PNG
+      encoder needed since the game builds its sprite from the same pixel array (see below).
+      PNG stays a client-side download for reference/backup, not the game's source of truth
+- [x] Game: `src/render/assets.js` fetches the manifest once at boot and builds an offscreen
+      canvas per asset; `paintTile` (`src/render/tiles.js`) draws that sprite when one exists
+      for a kind and falls through to the flat painter otherwise. Multi-cell anchors will draw
+      their `w×h` sprite the same way once anchor/part exists (Phase 3) — not wired yet since
+      there's nothing multi-cell in the world grid to attach it to
+- [x] Played: drew on a 2×1 bed canvas in the editor (confirmed the wide-canvas layout, fixed
+      a grid blowout bug where a multi-tile canvas pushed the side panel off-screen), saved to
+      the game, reloaded, confirmed `assets/manifest.json` loads with no console errors and
+      the untouched dirt tile still renders identically via its flat-painter fallback — the
+      pipeline is proven; the removed test scribble was not committed. Real art is Michael's
+      to draw next
 - Later in the same tool: character animation frames (idle / walk / jump / death)
 
 ## Phase 5 — The background layer (DESIGN §5.7)

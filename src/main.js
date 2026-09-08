@@ -1,7 +1,10 @@
 import { createGame } from './game.js';
 import { validateContent } from './validate.js';
+import { loadAssets } from './render/assets.js';
 
 validateContent();   // fail loudly at boot on a bad TILE_DEFS/CRAFTS row, not mid-game
+
+await loadAssets();  // hand-drawn art, if any (tools/editor); flat painters cover the rest
 
 const game = createGame({
   canvas: document.getElementById('g'),

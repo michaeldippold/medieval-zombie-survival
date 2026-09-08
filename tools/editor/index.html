@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Editor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Asset Editor</h1>
+  <span class="subtitle">pixel art for medieval-zombie-survival — 16px per tile</span>
+  <span id="saveIndicator" class="save-indicator">saved</span>
+</header>
+
+<div class="layout">
+  <aside class="tile-list">
+    <div class="category-tabs" id="categoryTabs"></div>
+
+    <button id="newAssetBtn" class="new-asset-toggle">+ New asset</button>
+    <div class="new-asset-form" id="newAssetForm" hidden>
+      <input type="text" id="newLabel" placeholder="Label, e.g. Iron Bed">
+      <select id="newCategory"></select>
+      <div class="dim-row">
+        <label>W <input type="number" id="newW" min="1" max="6" value="1"></label>
+        <label>H <input type="number" id="newH" min="1" max="6" value="1"></label>
+      </div>
+      <div class="form-actions">
+        <button id="createAssetBtn">Create</button>
+        <button id="cancelNewAssetBtn">Cancel</button>
+      </div>
+    </div>
+
+    <div class="asset-scroll" id="assetList"></div>
+  </aside>
+
+  <main class="editor">
+    <div class="toolbar">
+      <div class="tool-group" id="toolButtons">
+        <button data-tool="pencil" class="tool-btn active" title="Pencil (P)">✏️</button>
+        <button data-tool="eraser" class="tool-btn" title="Eraser (E)">🧹</button>
+        <button data-tool="bucket" class="tool-btn" title="Fill (G)">🪣</button>
+        <button data-tool="eyedropper" class="tool-btn" title="Eyedropper (I)">💧</button>
+      </div>
+      <div class="tool-group">
+        <button id="undoBtn" title="Undo (Ctrl+Z)">↶</button>
+        <button id="redoBtn" title="Redo (Ctrl+Y)">↷</button>
+      </div>
+      <div class="tool-group">
+        <label><input type="checkbox" id="gridToggle" checked> grid</label>
+        <label><input type="checkbox" id="mirrorToggle"> mirror-x</label>
+      </div>
+      <div class="tool-group">
+        <label>zoom
+          <select id="zoomSelect">
+            <option value="12">12px</option>
+            <option value="16">16px</option>
+            <option value="24" selected>24px</option>
+            <option value="32">32px</option>
+          </select>
+        </label>
+      </div>
+      <div class="tool-group">
+        <button id="fillSolidBtn" title="Fill whole canvas with active color">Fill solid</button>
+        <button id="clearBtn" title="Clear to transparent">Clear</button>
+      </div>
+    </div>
+
+    <div class="asset-meta">
+      <span id="activeLabel">—</span>
+      <span id="activeDims" class="dims-badge"></span>
+      <button id="renameBtn" title="Rename">Rename</button>
+      <button id="duplicateBtn" title="Duplicate">Duplicate</button>
+      <button id="deleteBtn" title="Delete" class="danger">Delete</button>
+    </div>
+
+    <div class="canvas-scroll"><canvas id="editCanvas"></canvas></div>
+    <p class="hint">Left click: draw · Right click: erase · Heavy lines mark 16px tile edges</p>
+  </main>
+
+  <aside class="side-panel">
+    <section>
+      <h2>Color</h2>
+      <div class="active-color-row">
+        <div id="activeColorSwatch" class="active-color-swatch"></div>
+        <input type="color" id="customColor" value="#7a4f2a">
+        <button id="transparentBtn" title="Paint with transparency">transparent</button>
+      </div>
+      <div class="palette-grid" id="paletteGrid"></div>
+      <div class="palette-grid" id="recentGrid"></div>
+    </section>
+
+    <section>
+      <h2>Proportion preview</h2>
+      <canvas id="proportionPreview" width="260" height="180"></canvas>
+      <p class="hint">Mannequin is 1×2 tiles — the game's scale (16px art at 2×), over a
+        sample background wall.</p>
+    </section>
+
+    <section>
+      <h2>Save to game</h2>
+      <button id="saveToGameBtn">Save all assets to game</button>
+      <p class="hint" id="serverIndicator">writes assets/manifest.json in the repo</p>
+    </section>
+
+    <section>
+      <h2>Export / import</h2>
+      <button id="exportAssetPng">Download this asset as PNG</button>
+      <hr>
+      <button id="exportProject">Save project JSON</button>
+      <label class="file-btn">Load project JSON
+        <input type="file" id="importProject" accept="application/json" hidden>
+      </label>
+      <label class="file-btn">Import legacy tileset
+        <input type="file" id="importLegacy" accept="application/json" hidden>
+      </label>
+    </section>
+  </aside>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

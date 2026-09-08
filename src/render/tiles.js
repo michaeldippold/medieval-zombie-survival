@@ -1,10 +1,13 @@
 // Tile painters. One function per kind, plus shared decorations (bars, cracks, splinters).
 import { TILE as T, COLORS, PORTAL } from '../config.js';
 import { integrity, TILE_DEFS } from '../world/tiles.js';
+import { spriteFor } from './assets.js';
 
 export function paintTile(ctx, c, r, t) {
   const x = c * T, y = r * T;
   if (t.back) paintBack(ctx, x, y, t.back, c);
+  const sprite = spriteFor(t.kind);
+  if (sprite) { ctx.drawImage(sprite, x, y, T, T); return; }
   const fn = PAINTERS[t.kind];
   if (fn) fn(ctx, x, y, t, c, r);
   else paintPlain(ctx, x, y, t);
