@@ -582,8 +582,9 @@ exported or any art is drawn, while the house is still one function. What change
 ### 7.1 Movement
 See §6. Facing follows the mouse. The held item is drawn pointed at the mouse.
 
-**Hold-to-use** (planned): holding left-click repeats for tools (dig, chop, mine — Minecraft's
-rule) and for placeables (paint a line of blocks). Weapons stay one click per swing.
+**Hold-to-use**: holding left-click repeats for tools (dig, chop, mine — Minecraft's rule) and
+for placeables (paint a line of blocks). Weapons stay one click per swing: a swing is a
+decision (pillar 3), a dig is labour.
 
 ### 7.2 Health, injury, infection
 - HP 100. Zombie touch does 20 and knocks back; per-zombie cooldown 0.8 s.

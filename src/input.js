@@ -5,7 +5,9 @@ import { VIEW } from './config.js';
 export function createInput(canvas) {
   const keys = new Set();
   const actions = { jump: false, jumpReleased: false, use: false, slot: null, restart: false, menuAt: null, closeMenu: false, escape: false, inventory: false };
-  const mouse = { sx: VIEW.W / 2, sy: VIEW.H / 2, wx: 0, wy: 0 };
+  // `down`: left button currently held (DESIGN §7.1 hold-to-use). Tools and placement repeat
+  // while it's true, on their own cooldowns; weapons only ever read the per-click `use` edge.
+  const mouse = { sx: VIEW.W / 2, sy: VIEW.H / 2, wx: 0, wy: 0, down: false };
 
   const isJumpKey = code => code === 'Space';
   window.addEventListener('keydown', e => {
@@ -34,10 +36,13 @@ export function createInput(canvas) {
   canvas.addEventListener('mousemove', updateMouse);
   canvas.addEventListener('mousedown', e => {
     updateMouse(e); canvas.focus();
-    if (e.button === 0) { actions.closeMenu = true; actions.use = true; }
+    if (e.button === 0) { actions.closeMenu = true; actions.use = true; mouse.down = true; }
     if (e.button === 2) actions.menuAt = { clientX: e.clientX, clientY: e.clientY };
     e.preventDefault();
   });
+  // Release is tracked on the window, not the canvas, so dragging off the edge still lets go.
+  window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+  window.addEventListener('blur', () => { mouse.down = false; });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
 
   const held = (...codes) => codes.some(c => keys.has(c));

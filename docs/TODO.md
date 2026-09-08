@@ -209,8 +209,10 @@ are built, and it's in this repo so nothing has to be copied by hand.
 
 ## Quick items (any time, no phase)
 
-- [ ] **Hold-to-use**: holding left-click repeats for tools (dig/chop/mine) and placeables
-      (paint a line). Weapons stay one click per swing. (DESIGN §7.1)
+- [x] **Hold-to-use** (2026-09-08): `input.mouse.down` tracks the left button (released on the
+      window, so dragging off the canvas lets go); tools repeat on their cooldown while held,
+      placement paints a line (the "why not" hint fires only on the click, not every frame of
+      a stroke). Weapons still read only the per-click edge. Verified by Michael in play.
 
 ## Phase 3 — Scale: two-tall bodies (DESIGN §5.1, §6.1) ✅ 2026-09-08 (core landed; see open items)
 

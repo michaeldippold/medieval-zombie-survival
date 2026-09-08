@@ -49,8 +49,11 @@ export function updatePlacement(state) {
   const check = canPlaceAt(state, c, r);
   state.ghost = { itemId: id, c, r, ok: check.ok, why: check.why };
 
-  if (!input.actions.use) return;
-  if (!check.ok) { showHint(state, check.why); return; }
+  // Click to place one, hold and drag to paint a line (DESIGN §7.1). The "why not" hint only
+  // fires on the click itself — while painting, the cells just passed over are legitimately
+  // "not empty" and the hint would flicker the whole stroke.
+  if (!(input.actions.use || input.mouse.down)) return;
+  if (!check.ok) { if (input.actions.use) showHint(state, check.why); return; }
   const insideDir = Math.sign(p.x + p.w / 2 - (c * TILE + TILE / 2)) || 1;
   const tile = applyPlacedHp(item.make(insideDir));
   tile.back = world.get(c, r)?.back ?? null;

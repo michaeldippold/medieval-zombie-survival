@@ -19,7 +19,8 @@ export function updateTools(state, dt) {
   const near = Math.hypot(p.x + p.w / 2 - (c * TILE + TILE / 2), p.y + p.h / 2 - (r * TILE + TILE / 2)) < PLAYER.REACH;
   state.target = { c, r, near };
 
-  if (!input.actions.use || state.toolCool > 0) return;
+  // Click once, or hold: a held button keeps swinging on the tool cooldown (DESIGN §7.1).
+  if (!(input.actions.use || input.mouse.down) || state.toolCool > 0) return;
   state.toolCool = TOOLS.COOLDOWN;
   if (!near) { showHint(state, 'too far'); return; }
 
