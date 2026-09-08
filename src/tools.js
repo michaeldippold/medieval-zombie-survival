@@ -29,8 +29,11 @@ export function updateTools(state, dt) {
     // A multi-cell tile (a 2-tall door, DESIGN §5.8) is dismantled whole: clear every cell of
     // its footprint, not just the one the player is aiming at, so no `part` is left orphaned
     // pointing at an anchor that no longer exists.
+    // Only something `stampMulti` placed has a footprint to walk; an ordinary block (dirt,
+    // a leaf, a wall) has no `footAt` and is just the one cell under the cursor.
     const anchor = t.kind === 'part' ? t.anchor : t;
-    for (const [cc, rr] of footprintCells(anchor)) world.set(cc, rr, airAfter(anchor, world.isUnderground(cc, rr)));
+    const cells = anchor.footAt ? footprintCells(anchor) : [[c, r]];
+    for (const [cc, rr] of cells) world.set(cc, rr, airAfter(anchor, world.isUnderground(cc, rr)));
   } else world.touch();
   if (res.drop) {
     // A per-hit drop from a block that's still there must not spawn inside it: use the nearest

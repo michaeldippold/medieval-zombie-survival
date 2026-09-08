@@ -91,6 +91,7 @@ export function stampMulti(world, c, r, anchor) {
 // Every cell a multi-cell tile occupies, anchor first, as [c, r] pairs — what a removal has to
 // clear, or a placement ghost has to preview, in full.
 export function footprintCells(anchor) {
+  if (!anchor.footAt) throw new Error(`footprintCells: ${anchor.kind} was never placed with stampMulti (no footAt)`);
   const { c, r } = anchor.footAt;
   return [[c, r], ...(TILE_DEFS[anchor.kind].footprint || []).map(([dc, dr]) => [c + dc, r + dr])];
 }
