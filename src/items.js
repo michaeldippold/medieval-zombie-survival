@@ -25,7 +25,7 @@ export const ITEMS = {
 
   dirt:       { name: 'Dirt',        kind: 'placeable', make: () => makeTile('dirt') },
   leaf:       { name: 'Leaves',      kind: 'placeable', make: () => makeTile('leaf') },
-  log:        { name: 'Log',         kind: 'placeable', make: () => makeTile('log') },   // raw off a tree; also a bark building block
+  log:        { name: 'Log',         kind: 'placeable', make: () => makeTile('trunk') },  // decoration, same rules whether grown or placed — never a wall (DESIGN §5.3)
   wall:       { name: 'Timber Wall', kind: 'placeable', make: () => makeTile('wall') },
   floor:      { name: 'Plank Floor', kind: 'placeable', make: () => makeTile('floor') },
   wall_stone: { name: 'Stone Wall',  kind: 'placeable', make: () => makeTile('wall_stone') },

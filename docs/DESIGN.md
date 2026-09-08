@@ -128,32 +128,46 @@ natural tile is a raw material; on a built tile it is the tile's own item id (§
 | kind | solid | opaque | hp | harvest | notes |
 |---|---|---|---|---|---|
 | `air` | no | no | — | — | may carry a `back` |
-| `dirt` | yes | yes | ∞ | shovel ×2 → dirt | |
-| `grass` | yes | yes | ∞ | shovel ×2 → dirt | dirt with a cap |
-| `stone` | yes | yes | ∞ | pick ×6 → stone **per hit** | mounds on the surface, a layer below |
-| `bedrock` | yes | yes | ∞ | — | bottom row |
-| `trunk` | **no** | **no** | ∞ | axe ×1 → log | trees don't block; no tree physics |
-| `leaf` | **no** | **no** | ∞ | anything ×1 → leaves | placeable, 1 leaves — bushes, hedges, clutter |
-| `log` | yes | yes | 250 | axe ×3 → log | placeable, 1 log — a real wall, unlike `trunk` |
-| `wall` (timber) | yes | yes | 300 | axe ×4 → wall | placeable, 1 plank |
-| `wall_stone` | yes | yes | 900 | pick ×6 → wall_stone | placeable, 1 stone |
-| `floor` (planks) | yes | yes | 120 | axe ×2 → floor | placeable, 1 plank |
-| `ladder` | no | no | 40 | axe ×1 → ladder | climbable; placeable, 1 plank |
-| `door` | state | state | 150 | axe ×3 → door | portal, bars from inside; 2 plank |
-| `shutter` | state | state | 60 | axe ×2 → shutter | portal, climb-through when open; 1 plank |
-| `hatch` | state | state | 120 | axe ×3 → hatch | portal in a floor, bars from above; 2 plank |
+| `dirt` | yes | yes | ∞ | shovel ×2 → dirt | terrain |
+| `grass` | yes | yes | ∞ | shovel ×2 → dirt | terrain, dirt with a cap |
+| `stone` | yes | yes | ∞ | pick ×6 → stone **per hit** | terrain; mounds on the surface, a layer below |
+| `bedrock` | yes | yes | ∞ | — | terrain, bottom row |
+| `trunk` | **no** | **no** | ∞ | axe ×1 → log | decoration; also what a placed `log` item becomes |
+| `leaf` | **no** | **no** | ∞ | anything ×1 → leaves | decoration, placeable, 1 leaves — bushes, hedges |
+| `wall` (timber) | yes | yes | 300 | axe ×4 → wall | structure, placeable, 1 plank |
+| `wall_stone` | yes | yes | 900 | pick ×6 → wall_stone | structure, placeable, 1 stone |
+| `floor` (planks) | yes | yes | 120 | axe ×2 → floor | structure, placeable, 1 plank |
+| `ladder` | no | no | 40 | axe ×1 → ladder | structure, climbable; placeable, 1 plank |
+| `door` | state | state | 150 | axe ×3 → door | structure/portal, bars from inside; 2 plank |
+| `shutter` | state | state | 60 | axe ×2 → shutter | structure/portal, climb-through when open; 1 plank |
+| `hatch` | state | state | 120 | axe ×3 → hatch | structure/portal in a floor, bars from above; 2 plank |
 
-Collision decisions: trees and leaves never block movement or sight (a tree you can't walk
-past is not fun; a forest you can't see through is a different game). Stone does both — a
-stone mountain is a thing worth building. A placed **log block** is a deliberate exception to
-"trees don't collide": it's the same bark look as a trunk, but it's something you built, so it
-has to actually hold up a wall — `log` is its own tile kind, solid and zombie-attackable, kept
-separate from the never-solid natural `trunk`.
+**Solidity is fixed per kind by what the kind is *for*, in three tiers — never toggled by
+natural-vs-placed origin** (settled 2026-09-08, after placed log blocks accidentally turned
+felled trees into free walls):
 
-**Wood yield**: a trunk tile fells 1:1 into a `log` (placeable as-is — a bark block, for
-variety). Crafting turns 1 log into 4 **planks**, and every structure recipe costs planks, not
-logs directly. That multiplier — not more or taller trees — is what makes one tree's wood
-worth building with; see §7.3.
+- **Terrain** (dirt, stone, bedrock) — always solid. It's the ground; a placed dirt or stone
+  block is filling a hole or propping up a floor exactly like the ground it matches, so it
+  keeps the ground's rule.
+- **Decoration** (trunk, leaf) — always non-solid, always non-opaque, forever, *including once
+  placed*. This was always specifically "trees don't block the run," not a general "natural
+  material" rule — a felled log put back down is still a tree, not a wall. `ITEMS.log.make()`
+  literally builds a `trunk` tile: no separate "log block" tile kind, no separate rule to keep
+  in sync.
+- **Structure** (wall, floor, wall_stone, ladder, door, shutter, hatch) — always solid (ladders
+  climb-through by design). The one tier whose entire purpose is to be a barrier; the only way
+  into it is a recipe (§7.3), never digging something up.
+
+Stone was never in the decoration tier — "climbing a stone mountain" (§16 growth-vector intent)
+requires it to collide, above ground and below, whether natural or mined-and-placed. There is
+no inconsistency to resolve there; the earlier "natural vs. built" framing was solving the
+wrong axis. A future block picks its tier and the two booleans follow — see §16's growth-vector
+note.
+
+**Wood yield**: a trunk tile fells 1:1 into a `log` (placeable straight back as decoration — a
+bark block for background variety, never a wall). Crafting turns 1 log into 4 **planks**, and
+every structure recipe costs planks, not logs directly. That multiplier — not more or taller
+trees — is what makes one tree's wood worth building with; see §7.3.
 
 **`contact` hook**: a tile can define `contact: { dmg, cooldown }` (`spikes` is the one
 example so far — non-solid, so a body sinks onto whatever's beneath it and keeps taking hits).
@@ -215,10 +229,11 @@ opaque = solid
 ### 5.6 World generation
 
 The starter world is seeded-random (`maps.js`): a flat surface at row 24, dirt to row 31,
-stone to row 38, bedrock at 39. On the surface: stone mounds (3×2 plus a cap, solid),
-trees (placed after mounds so they route around them), one timber house. Underground: stone
-veins in the dirt layer (another way to find stone), and a few natural caves — air pockets
-with an earth backwall.
+stone to row 38, bedrock at 39. On the surface: stone mounds (3 wide, a uniform 2 tall — never
+taller, so one is always a hill a zombie can scramble over, not an accidental wall the player
+never built; see §8.4b), trees (placed after mounds so they route around them), one timber
+house. Underground: stone veins in the dirt layer (another way to find stone), and a few
+natural caves — air pockets with an earth backwall.
 
 **What belongs underground.** Digging in is allowed, so there must be reasons to go down
 and reasons not to stay. Reasons to go: stone veins now; later iron ore (the tier-3 material
@@ -344,13 +359,20 @@ matter.
 ### 8.4b Obstacles by height
 What a blocked, chasing zombie does depends on how tall the obstacle is:
 1 tile — steps up instantly (`tryClimb`). 2 tiles — **scrambles** over in `SCRAMBLE_TIME`
-(5s), with a visible clawing shake; horizontal motion freezes for the climb, so landing must
-snap both axes onto the obstacle's own column — landing only in Y leaves it floating over
-open air one column short, which falls straight back down and restarts the climb forever.
-3+ — cannot; attacks the tile if `canZombieDamage` (anything with finite hp, or a portal),
-otherwise just holds. This check runs *before* height is even considered, so a player-built
-wall of any height is always attacked rather than climbed. So a 2-deep
-pit is a delay, a 2-high fence is a bad wall, and 3-high is where fortification starts.
+(5s): `y` eases from where it grabbed on to the top of the stack every frame (not a wait-then-
+teleport — that read as stuck, not climbing), while `x` stays pressed against the face until
+the very last instant, when it snaps onto the ledge alongside the final `y`. Landing has to
+resolve both axes together — landing only in Y leaves it floating over open air one column
+short, which falls straight back down and restarts the climb forever (a real bug during
+development, not a hypothetical). 3+ — cannot; attacks the tile if `canZombieDamage` (anything
+with finite hp, or a portal), otherwise just holds. This check runs *before* height is even
+considered, so a player-built wall of any height is always attacked rather than climbed.
+So a 2-deep pit is a delay, a 2-high fence is a bad wall, and 3-high is where fortification
+starts — **for the player's own builds**. Natural terrain is a different case: a 3-tall
+feature the player never built (the old stone-mound centre peak) creates the exact same
+un-scrambleable, un-attackable wall, but as unearned protection from map geometry rather than
+something the player made — worldgen keeps natural mounds a uniform 2 tall specifically so
+they're always the "hill" case, never the "wall" case (§5.6).
 Pits also fill: zombies are solid to each other and stack, so a pit holds `depth − 1` per
 column before the next one walks across. That is emergent and intended.
 

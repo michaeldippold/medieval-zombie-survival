@@ -114,12 +114,16 @@ export function updateZombies(state, dt) {
       }
     }
 
-    // ---- scrambling: clinging to a too-tall obstacle, climbing it slowly. Overrides this
-    // frame's decided vx; completes by snapping onto the top of the stack.
+    // ---- scrambling: clinging to a too-tall obstacle, visibly climbing it slowly (y eases from
+    // where it grabbed on to the top of the stack — it used to just wait, then teleport, which
+    // read as "stuck" rather than "climbing"). Overrides this frame's decided vx; x stays put
+    // (still pressed against the face) until the very end, when it steps onto the ledge.
     if (e.scramble) {
       e.scrambling = true; e.vx = 0;          // stays true for the rest of this frame even on completion,
       e.scramble.t += dt;                     // so gravity doesn't nudge it the instant it lands
-      if (e.scramble.t >= ZOMBIE.SCRAMBLE_TIME) { e.x = e.scramble.landX; e.y = e.scramble.landY; e.vy = 0; e.scramble = null; }
+      const k = Math.min(1, e.scramble.t / ZOMBIE.SCRAMBLE_TIME);
+      e.y = e.scramble.startY + (e.scramble.landY - e.scramble.startY) * k;
+      if (k >= 1) { e.x = e.scramble.landX; e.y = e.scramble.landY; e.vy = 0; e.scramble = null; }
     }
 
     // ---- move. A climber (ladder or scramble) is on a surface: nothing blocks it and nothing
@@ -147,7 +151,7 @@ export function updateZombies(state, dt) {
         const climbed = (e.onGround || onClimbable(world, e)) && tryClimb(world, e);
         if (!climbed) {
           const profile = obstacleProfile(world, e);
-          if (profile.height >= 2 && profile.height <= ZOMBIE.SCRAMBLE_MAX) e.scramble = { t: 0, landX: profile.landX, landY: profile.landY };
+          if (profile.height >= 2 && profile.height <= ZOMBIE.SCRAMBLE_MAX) e.scramble = { t: 0, startY: e.y, landX: profile.landX, landY: profile.landY };
         }
       } else { e.attackT = 0; e.dir *= -1; e.timer = 0.5 + Math.random(); }
     } else if (!e.climbing && !e.scrambling) e.attackT = 0;

@@ -64,6 +64,14 @@ The first full loop: get resources → build a house → don't die.
 - [x] Underground base confirmed: dig in, cap with floor + trapdoor, sealed
 - [x] Pits: zombies fall in and stack; a 2-deep 1-wide pit holds one before the next walks over it. Emergent from body collision — keep.
 - [x] Scrambling: a chasing zombie blocked by a 2-tile obstacle climbs it slowly (5s, visible clawing shake), landing on top aligned with the obstacle's column; 3+ is impossible and just holds. `ZOMBIE.SCRAMBLE_MAX` / `SCRAMBLE_TIME` in config.
+- [x] Playtest fix: the 5s scramble wasn't visibly climbing — position never changed until it
+      snapped to the landing spot at the end, reading as "stuck, then teleports." `y` now eases
+      from the grab point to the landing spot every frame; `x` still snaps only at the very end
+      (DESIGN §8.4b). Verified in node: `y` changes smoothly frame to frame during a climb.
+- [x] Playtest fix: natural stone mounds had a 3-tall centre column, which is un-scrambleable —
+      a zombie beelining into one got permanently stuck, and others queued up behind it, for
+      free (the player didn't build that wall). Mounds are now a uniform 2 tall everywhere, so
+      they're always the "hill" case. Verified: generated map's tallest surface stone stack is 2.
 - [x] Zombies attack timber/stone walls: `canZombieDamage(t)` is true for any tile with finite hp (or a portal) — earth/stone/trees stay Infinity, so this fell out of the existing hp field with no new flag. A broken wall/floor turns to air (no drop; that's zombie loss, not player harvest).
 - [x] Fixed a landing bug where scrambling only changed Y, leaving the zombie floating one column short of the obstacle with nothing to stand on — it would fall right back down and restart the climb forever. Landing now also snaps X into the obstacle's column.
 - [ ] Played: fell trees, build a hut with a door, seal it, survive; dig a basement, cap it, confirm sealed
@@ -108,9 +116,12 @@ each step leaves the game playable.
 ### 2b-trees — trunks are blocks, logs → planks
 - [x] Trunk tile fills the whole 40px block (bark texture edge to edge) — a shared `paintBark`
       helper draws both the natural trunk and the placed log block identically
-- [x] Trunk drops a **log** item (`ITEMS.log`, kind `placeable`); its tile (`log` in TILE_DEFS)
-      is a real solid/opaque/zombie-attackable block, deliberately a *different* tile kind from
-      natural `trunk` (which stays non-solid) — a placed log has to actually function as a wall
+- [x] Trunk drops a **log** item (`ITEMS.log`, kind `placeable`). Originally given its own
+      solid/attackable `log` tile kind so it could double as a wall — reverted after playtest
+      (2026-09-08): a felled tree placed back down turned into a free, indestructible-looking
+      wall, contradicting "trees don't block." `ITEMS.log.make()` now just builds a `trunk`
+      tile — decoration, identical rules whether grown or placed, never a wall. See the
+      solidity-tiers ruling in DESIGN §5.3.
 - [x] Craft: 1 log → 4 **planks** (`CRAFTS.planks`). Every structure recipe now costs `plank`
       instead of a raw `wood` item (which no longer exists); arrows cost 1 plank → 4. Verified
       the whole chain — fell → log → craft planks → craft wall → place → dismantle → get the
@@ -263,7 +274,9 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
 - 2026-09-07 — Underground bases are legitimate; the counterweight is that nothing renewable exists down there, plus needs.
 - 2026-09-07 — Everything is an item (Phase 2b). The Build… palette was a shortcut that fused crafting and placing; that fusion means placeables can't be loot, can't take inventory space, and can't be picked back up. Minecraft model instead: craft → inventory → hotbar → place. Ghost preview stays as the placement UI.
 - 2026-09-07 — Taking a thing down (harvest) returns the thing; losing it (zombie breaks it) returns nothing.
-- 2026-09-07 — Wood yield in 2D: log → 4 planks at the crafting step, not per-hit trunks. Trunks stay 1 block = 1 log so bark blocks are real, placeable, and cost a full log.
+- 2026-09-07 — Wood yield in 2D: log → 4 planks at the crafting step, not per-hit trunks. Trunks stay 1 block = 1 log so bark blocks are real, placeable, and cost a full log. *(Superseded 2026-09-08: a placed log block is decoration, not a solid wall — see the next entry and DESIGN §5.3.)*
+- 2026-09-08 — Solidity is fixed per tile kind by what the kind is for (terrain / decoration / structure), never by natural-vs-placed origin. A placed log stays decoration (non-solid) exactly like a growing tree; only crafted `wall`/`wall_stone`/etc. are ever a barrier. Triggered by a playtest report: felling a tree and placing the bark blocks back turned it into a free wall.
+- 2026-09-08 — Natural terrain features must never create an un-scrambleable (3+ tall), un-attackable chokepoint the player didn't build — that's free protection from map geometry. Stone mounds capped at a uniform 2 tall for this reason; scrambling itself was fixed to visibly climb (interpolated y) instead of stalling then teleporting.
 - 2026-09-08 — Zombie wall-damage needed no new flag: `canZombieDamage(t)` is just "finite hp or a portal" — the same `hp: Infinity` that already marks earth/stone/trees as un-diggable also marks them as un-attackable by zombies.
 - 2026-09-08 — Phase 2b (everything is an item) shipped. `state.held` changed meaning from an
   item id string to a hotbar slot index — every read site now resolves it via `heldId()`. Watch

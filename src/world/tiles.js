@@ -13,6 +13,15 @@ import { PORTAL } from '../config.js';
 // literally gives you that material. On a built tile (wall/floor/door/...) it is the tile's
 // OWN item id: dismantling gives back the exact thing, which can be carried and placed again.
 // A tile a zombie breaks (not harvested) never drops anything — see world/vision.js airAfter callers.
+//
+// Solidity is fixed per kind by what the kind is FOR, in three tiers — never toggled by
+// natural-vs-placed origin (DESIGN §5.3):
+//   terrain     (dirt, stone, bedrock)      — always solid; it's the ground, above or below
+//   decoration  (trunk, leaf)               — always non-solid/non-opaque, forever, even placed
+//   structure   (wall, floor, door, ...)    — always solid (ladders climb-through); the one
+//                                              tier whose entire purpose is to be a barrier
+// A placed log is decoration (item 'log' makes a 'trunk' tile) — a felled tree put back down
+// is still a tree, not a wall. A real wall is the separate, crafted `wall` item.
 export const TILE_DEFS = {
   air:        { solid: false, opaque: false },
   dirt:       { solid: true,  opaque: true, hp: Infinity, color: '#7a4f2a', harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
@@ -21,7 +30,6 @@ export const TILE_DEFS = {
   bedrock:    { solid: true,  opaque: true, hp: Infinity, color: '#2b2d31' },
   trunk:      { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'axe', hits: 1, drop: 'log' } },
   leaf:       { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'any', hits: 1, drop: 'leaf' } },
-  log:        { solid: true,  opaque: true, hp: 250, harvest: { tool: 'axe', hits: 3, drop: 'log' } },
   wall:       { solid: true,  opaque: true, hp: 300, color: '#c9a978', edge: 'rgba(0,0,0,0.18)', harvest: { tool: 'axe', hits: 4, drop: 'wall' } },
   wall_stone: { solid: true,  opaque: true, hp: 900, harvest: { tool: 'pick', hits: 6, drop: 'wall_stone' } },
   floor:      { solid: true,  opaque: true, hp: 120, harvest: { tool: 'axe', hits: 2, drop: 'floor' } },

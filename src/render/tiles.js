@@ -49,8 +49,7 @@ const PAINTERS = {
   },
   // Full block, edge to edge, so a natural trunk and a placed log block read as the same
   // material — one is just standing in a tree, the other in a wall.
-  trunk(ctx, x, y) { paintBark(ctx, x, y); },
-  log(ctx, x, y, t) { paintBark(ctx, x, y); paintCracks(ctx, x, y, integrity(t)); },
+  trunk(ctx, x, y) { paintBark(ctx, x, y); },   // shared by natural trunks and a placed log item — same tile, same rules
   leaf(ctx, x, y, t, c, r) {
     ctx.fillStyle = COLORS.leaf; ctx.fillRect(x, y, T, T);
     ctx.fillStyle = COLORS.leafShade; ctx.fillRect(x + ((c * 7 + r * 3) % 20), y + ((c * 5 + r * 11) % 22), 10, 8);

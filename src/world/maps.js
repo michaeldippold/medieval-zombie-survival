@@ -43,12 +43,14 @@ export function buildStarterMap() {
   const reserved = c => (c >= c0 - 3 && c <= c1 + 3) || Math.abs(c - spawnCol) < 4;
   const surfaceClear = (c, w, h) => { for (let dc = 0; dc < w; dc++) for (let dr = 1; dr <= h; dr++) if (!world.inBounds(c + dc, S - dr) || world.get(c + dc, S - dr)) return false; return true; };
 
-  // ---- stone mounds on the surface: 3 wide, 2 tall, solid. Placed before trees so trees route around them.
+  // ---- stone mounds on the surface: 3 wide, a uniform 2 tall, solid. Placed before trees so
+  // trees route around them. Deliberately never 3 tall: a natural mound is meant to be a hill a
+  // zombie can scramble over (ZOMBIE.SCRAMBLE_MAX = 2), not an unearned wall the player never
+  // built — a 3-tall peak here would jam anything chasing straight into it, for free.
   for (let tries = 0, made = 0; tries < 300 && made < G.STONE_MOUNDS; tries++) {
     const c = ri(3, G.COLS - 6);
-    if (reserved(c) || reserved(c + 2) || !surfaceClear(c - 1, 5, 3)) continue;
+    if (reserved(c) || reserved(c + 2) || !surfaceClear(c - 1, 5, 2)) continue;
     for (let dc = 0; dc < 3; dc++) { world.set(c + dc, S - 1, makeTile('stone')); world.set(c + dc, S - 2, makeTile('stone')); }
-    world.set(c + 1, S - 3, makeTile('stone'));
     made++;
   }
 
