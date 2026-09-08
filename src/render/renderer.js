@@ -46,12 +46,15 @@ export function render(ctx, state) {
     const g = state.ghost;
     const insideDir = Math.sign(pcx - (g.c * T + T / 2)) || 1;
     const proto = ITEMS[g.itemId].make(insideDir);
-    // A multi-cell placeable (a 2-tall door, DESIGN §5.8) previews and outlines every cell of
-    // its footprint, not just the one under the cursor — `proto` draws identically in each,
-    // same as the live tile does once `stampMulti` links its `part`(s) to it.
+    // paintTile only spans a tile's full multi-cell footprint (DESIGN §5.8) for an anchor that
+    // actually has `footAt` — true for anything `stampMulti` has placed, false for a bare
+    // `item.make()` prototype like this one. Fake it so the ghost previews the real, whole
+    // shape (one door, not the single square its own cell would draw); outlines still cover
+    // every cell of the footprint, not just the one under the cursor.
+    proto.footAt = { c: g.c, r: g.r };
     const cells = [[0, 0], ...(TILE_DEFS[proto.kind].footprint || [])].map(([dc, dr]) => [g.c + dc, g.r + dr]);
     ctx.save(); ctx.globalAlpha = 0.5;
-    for (const [cc, rr] of cells) paintTile(ctx, cc, rr, proto);
+    paintTile(ctx, g.c, g.r, proto);
     ctx.restore();
     ctx.strokeStyle = g.ok ? COLORS.ghostOk : COLORS.ghostBad; ctx.lineWidth = 2;
     for (const [cc, rr] of cells) ctx.strokeRect(cc * T - 1, rr * T - 1, T + 2, T + 2);

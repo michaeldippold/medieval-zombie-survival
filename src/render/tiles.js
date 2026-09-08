@@ -5,16 +5,25 @@ import { spriteFor } from './assets.js';
 
 export function paintTile(ctx, c, r, t) {
   const x = c * T, y = r * T;
-  // A `part` cell (DESIGN §5.8) has no def of its own — it paints the same live tile as its
-  // anchor, at its own position, so a 2-tall door reads as one door rather than a door with a
-  // blank slab stacked on it.
-  const real = t.kind === 'part' ? t.anchor : t;
-  if (real.back) paintBack(ctx, x, y, real.back, c);
-  const sprite = spriteFor(real.kind);
-  if (sprite) { ctx.drawImage(sprite, x, y, T, T); return; }
-  const fn = PAINTERS[real.kind];
-  if (fn) fn(ctx, x, y, real, c, r);
-  else paintPlain(ctx, x, y, real);
+  // A `part` cell (DESIGN §5.8) draws nothing of its own — the anchor (below it, at `footAt`)
+  // paints one continuous image spanning every cell of the footprint, itself included. Two
+  // stacked copies of the same 1-tile door picture read as two doors; one image the height of
+  // both cells reads as a door.
+  if (t.kind === 'part') { if (t.anchor.back) paintBack(ctx, x, y, t.anchor.back, c); return; }
+  if (t.back) paintBack(ctx, x, y, t.back, c);
+  // Only a *placed* anchor (one that's actually gone through `stampMulti` and so has `footAt`)
+  // spans its full footprint here — an icon preview's tile (built straight off `item.make()`,
+  // no placement involved) has no `footAt` and stays single-cell on purpose: an icon is always
+  // one small square, never the full-size multi-cell picture (see icons.js/interactions.js).
+  // The placement ghost gets a synthetic `footAt` for exactly this reason (see renderer.js).
+  const footprint = t.footAt ? (TILE_DEFS[t.kind].footprint || []) : [];
+  const minDr = footprint.reduce((m, [, dr]) => Math.min(m, dr), 0);
+  const hTiles = 1 - minDr, topY = y + minDr * T;
+  const sprite = spriteFor(t.kind);
+  if (sprite) { ctx.drawImage(sprite, x, topY, T, hTiles * T); return; }
+  const fn = PAINTERS[t.kind];
+  if (fn) fn(ctx, x, topY, t, c, r, hTiles, y);
+  else paintPlain(ctx, x, y, t);
 }
 
 // Default look for any block without its own painter: a flat fill from the def, optional cap
@@ -73,31 +82,37 @@ const PAINTERS = {
     paintCracks(ctx, x, y, integrity(t));
   },
   ladder(ctx, x, y) { paintLadder(ctx, x, y); },
-  door(ctx, x, y, t) {
-    ctx.fillStyle = COLORS.frame; ctx.fillRect(x, y - 3, 3, T + 3); ctx.fillRect(x + T - 3, y - 3, 3, T + 3); ctx.fillRect(x, y - 3, T, 3);
-    if (t.broken) { ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 3, y, T - 6, T); paintSplinters(ctx, x, y); }
-    else if (t.open) { ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 3, y, T - 6, T); ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 3, y, 6, T); }
+  // `y` here is the TOP of the whole footprint (may be a tile or more above the anchor's own
+  // row); `baseY` is the anchor's own row, used for the details that read best near the bottom
+  // (lock, cracks, bars) rather than stretched across the full height. One frame, one leaf,
+  // one door — not two 1-tile doors stacked. See paintTile's footprint handling above.
+  door(ctx, x, y, t, c, r, hTiles = 1, baseY = y) {
+    const H = T * hTiles;
+    ctx.fillStyle = COLORS.frame; ctx.fillRect(x, y - 3, 3, H + 3); ctx.fillRect(x + T - 3, y - 3, 3, H + 3); ctx.fillRect(x, y - 3, T, 3);
+    if (t.broken) { ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 3, y, T - 6, H); paintSplinters(ctx, x, baseY); }
+    else if (t.open) { ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 3, y, T - 6, H); ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 3, y, 6, H); }
     else {
-      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 3, y, T - 6, T);
-      ctx.fillStyle = COLORS.frame; ctx.fillRect(x + 3, y + 12, T - 6, 3); ctx.fillRect(x + 3, y + 26, T - 6, 3);
-      ctx.fillStyle = '#3a3f41'; ctx.fillRect(x + T - 12, y + T / 2 - 2, 4, 4);
-      paintCracks(ctx, x, y, integrity(t));
+      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 3, y, T - 6, H);
+      ctx.fillStyle = COLORS.frame; ctx.fillRect(x + 3, y + H * 0.32, T - 6, 3); ctx.fillRect(x + 3, y + H * 0.68, T - 6, 3);
+      ctx.fillStyle = '#3a3f41'; ctx.fillRect(x + T - 12, baseY + T / 2 - 2, 4, 4);
+      paintCracks(ctx, x, baseY, integrity(t));
     }
-    paintBars(ctx, x, y, t);
+    paintBars(ctx, x, y, t, H);
   },
-  shutter(ctx, x, y, t) {
-    ctx.fillStyle = COLORS.frame; ctx.fillRect(x, y, T, T);
-    if (t.broken) { ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 4, y + 4, T - 8, T - 8); paintSplinters(ctx, x + 2, y + 2); }
+  shutter(ctx, x, y, t, c, r, hTiles = 1, baseY = y) {
+    const H = T * hTiles;
+    ctx.fillStyle = COLORS.frame; ctx.fillRect(x, y, T, H);
+    if (t.broken) { ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 4, y + 4, T - 8, H - 8); paintSplinters(ctx, x + 2, baseY + 2); }
     else if (t.open) {
-      ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
-      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x - 6, y + 2, 8, T - 4); ctx.fillRect(x + T - 2, y + 2, 8, T - 4);   // panels swung wide
+      ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 4, y + 4, T - 8, H - 8);
+      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x - 6, y + 2, 8, H - 4); ctx.fillRect(x + T - 2, y + 2, 8, H - 4);   // panels swung wide
     } else {
-      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
-      ctx.fillStyle = COLORS.frame; ctx.fillRect(x + T / 2 - 1, y + 4, 2, T - 8);
-      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x + 4, y + 14, T - 8, 2); ctx.fillRect(x + 4, y + 26, T - 8, 2);
-      paintCracks(ctx, x, y, integrity(t));
+      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 4, y + 4, T - 8, H - 8);
+      ctx.fillStyle = COLORS.frame; ctx.fillRect(x + T / 2 - 1, y + 4, 2, H - 8);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x + 4, y + H * 0.38, T - 8, 2); ctx.fillRect(x + 4, y + H * 0.76, T - 8, 2);
+      paintCracks(ctx, x, baseY, integrity(t));
     }
-    paintBars(ctx, x, y, t);
+    paintBars(ctx, x, y, t, H);
   },
   hatch(ctx, x, y, t) {
     paintLadder(ctx, x, y);                              // the ladder continues through the hatch
@@ -117,9 +132,11 @@ function paintLadder(ctx, x, y) {
   ctx.fillStyle = COLORS.frame; ctx.fillRect(x + 10, y, 4, T); ctx.fillRect(x + 26, y, 4, T);
   for (let yy = y + 6; yy < y + T; yy += 12) ctx.fillRect(x + 10, yy, 20, 3);
 }
-function paintBars(ctx, x, y, t) {
+// `H` is the full drawn height (a multi-cell door/shutter passes its whole footprint's height;
+// everything else defaults to one tile) — bars space themselves out across whatever that is.
+function paintBars(ctx, x, y, t, H = T) {
   for (let i = 0; i < t.bars; i++) {
-    const by = y + 10 + i * 14;
+    const by = y + (H * (i + 1)) / (PORTAL.MAX_BARS + 1) - 4;
     ctx.fillStyle = COLORS.woodDark; ctx.fillRect(x - 4, by, T + 8, 9);
     ctx.fillStyle = '#3a3f41'; ctx.fillRect(x - 2, by + 3, 3, 3); ctx.fillRect(x + T - 1, by + 3, 3, 3);
   }
