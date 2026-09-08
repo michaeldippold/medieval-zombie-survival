@@ -2,15 +2,23 @@
 // unlimited, so the slot count only bites when you carry many different things. These helpers
 // are the only way to change it; `version` bumps on every change so UI can re-render lazily.
 import { INVENTORY } from './config.js';
-import { ITEMS } from './items.js';
+import { ITEMS, STARTER_LOADOUT, STARTER_EXTRA } from './items.js';
 
-export function createInventory(start = {}) {
-  const inv = { slots: Array(INVENTORY.SLOTS).fill(null), version: 0 };
-  for (const [id, n] of Object.entries(start)) if (n > 0) give(inv, id, n);
+export function createInventory() {
+  return { slots: Array(INVENTORY.SLOTS).fill(null), version: 0 };
+}
+
+// A fresh loadout: sword/bow/shovel/axe/pick fixed into the hotbar slots, arrows just after.
+export function createStartInventory() {
+  const inv = createInventory();
+  STARTER_LOADOUT.forEach((id, i) => { inv.slots[i] = { id, n: 1 }; });
+  inv.slots[STARTER_EXTRA.slot] = { id: STARTER_EXTRA.id, n: STARTER_EXTRA.n };
   return inv;
 }
 
 export const count = (inv, id) => inv.slots.reduce((s, x) => s + (x && x.id === id ? x.n : 0), 0);
+// What the given hotbar slot index is holding, or null. `slot` is state.held.
+export const heldId = (inv, slot) => inv.slots[slot]?.id ?? null;
 
 // Adds n of id. Returns how many didn't fit (0 unless every slot is taken by other items).
 export function give(inv, id, n = 1) {

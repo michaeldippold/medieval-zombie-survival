@@ -1,9 +1,9 @@
-// What the player can do to a tile, as context-menu items, plus the build/craft palette entries.
+// What the player can do to a tile, as context-menu items, plus the craft palette entries.
 // Rules live here; the widgets just render.
 import { TILE, PLAYER, PORTAL } from './config.js';
 import { isPortal, isSolid, isAir, portalName, defOf, TOOL_NAMES } from './world/tiles.js';
 import { overlap } from './physics.js';
-import { BUILDS, CRAFTS, ITEMS } from './items.js';
+import { CRAFTS, ITEMS } from './items.js';
 import { canAfford, take, give, haveLabel } from './inventory.js';
 import { paintTile } from './render/tiles.js';
 import { paintItemIcon } from './render/icons.js';
@@ -11,7 +11,7 @@ import { spawnDrop } from './entities/drops.js';
 import { showHint } from './ui/hints.js';
 
 // Returns [{ label, primary?, disabled?, run? }]. Always ends with Cancel.
-// `ui.openBuild()` / `ui.openCraft()` open the palettes where the menu was opened.
+// `ui.openCraft()` opens the craft palette where the menu was opened.
 export function menuItemsForTile(state, c, r, ui) {
   const { world, player: p, zombies, inventory: inv } = state;
   const t = world.get(c, r);
@@ -43,8 +43,7 @@ export function menuItemsForTile(state, c, r, ui) {
     }
     if (t.bars > 0) items.push({ label: `Remove bar (${t.bars}/${PORTAL.MAX_BARS})${!inside ? sideNote : far}`, disabled: !near || !inside, run: change(() => { t.bars--; t.barHp = PORTAL.BAR_HP; }) });
   } else if (isAir(t)) {
-    const canBuild = BUILDS.some(b => canAfford(inv, b.cost)), canCraft = CRAFTS.some(c => canAfford(inv, c.cost));
-    items.push({ label: canBuild ? 'Build…' : 'Build… (nothing you can afford yet)', primary: canBuild, run: () => ui.openBuild() });
+    const canCraft = CRAFTS.some(cr => canAfford(inv, cr.cost));
     items.push({ label: canCraft ? 'Craft…' : 'Craft… (nothing you can afford yet)', primary: canCraft, run: () => ui.openCraft() });
   } else {
     const h = defOf(t).harvest;
@@ -55,19 +54,21 @@ export function menuItemsForTile(state, c, r, ui) {
   return items;
 }
 
-export const buildEntries = inv => BUILDS.map(b => ({
-  id: b.id, label: b.label, have: haveLabel(inv, b.cost), enabled: canAfford(inv, b.cost),
-  paint: ctx => paintTile(ctx, 0, 0, b.make(1)),
-}));
+// Icon for a craft entry: the tile if it makes one, otherwise the item's own icon.
+function paintCraftIcon(ctx, giveId) {
+  const item = ITEMS[giveId];
+  if (item?.make) paintTile(ctx, 0, 0, item.make(1));
+  else paintItemIcon(ctx, giveId);
+}
 
-export const craftEntries = inv => CRAFTS.map(c => ({
-  id: c.id, label: c.label, have: haveLabel(inv, c.cost), enabled: canAfford(inv, c.cost),
-  paint: ctx => paintItemIcon(ctx, c.icon),
+export const craftEntries = inv => CRAFTS.map(cr => ({
+  id: cr.id, label: cr.label, have: haveLabel(inv, cr.cost), enabled: canAfford(inv, cr.cost),
+  paint: ctx => paintCraftIcon(ctx, Object.keys(cr.gives)[0]),
 }));
 
 // Craft one batch. Anything that doesn't fit in the inventory drops at the player's feet.
 export function craft(state, id) {
-  const recipe = CRAFTS.find(c => c.id === id);
+  const recipe = CRAFTS.find(cr => cr.id === id);
   if (!recipe || !take(state.inventory, recipe.cost)) return false;
   const p = state.player;
   for (const [item, n] of Object.entries(recipe.gives)) {

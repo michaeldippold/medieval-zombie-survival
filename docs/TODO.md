@@ -75,32 +75,35 @@ items, the hotbar holds items, placing is using the selected item. The ghost pre
 is the placement UI regardless of where the item came from. Mostly deletion. Do in this order —
 each step leaves the game playable.
 
-1. [ ] **Hotbar = inventory slots 0–4.** `HOTBAR` stops being a fixed list; the bar renders
-       `inventory.slots[0..4]` (icons + counts). Number keys select a slot. `state.held` becomes
-       a slot index; "what am I holding" is `slots[held]?.id`. Start inventory puts sword, bow,
-       shovel, axe, pickaxe in slots 0–4 and 10 arrows in slot 5.
-2. [ ] **Drag between inventory and hotbar.** The inventory window shows all 20 slots with the
-       first row marked as the bar; dragging already swaps any two slots, so this is styling.
-3. [ ] **Placeable items.** `ITEMS` gains `places: <tile kind>` (and a `make(insideDir)`) for
-       dirt, stone, leaf, wall, floor, wall_stone, ladder, door, shutter, hatch. Holding one
-       shows the ghost; left click stamps one and takes 1 from the stack. Empty stack → ghost
-       goes red, hint "none left". Selecting another slot is the only way out; no build mode
-       flag, no Esc needed.
-4. [ ] **Craft, not Build.** Remove `BUILDS` and the Build… entry. `CRAFTS` grows: timber wall
-       (1 wood → 1), plank floor (1 wood → 1), ladder (1 wood → 1), door (2 wood → 1), shutter
-       (1 wood → 1), trapdoor (2 wood → 1), stone wall (1 stone → 1), arrows (1 wood → 4).
-       Crafted output prefers a free hotbar slot, then inventory, then drops at your feet.
-5. [ ] **Dismantle drops the thing.** Player harvesting a placed tile drops its item
-       (`door` → 1 door, `wall` → 1 timber wall), not its ingredients. Zombie destruction
-       (`broken`) drops nothing but splinters — losing it and taking it down are different.
-       Raw earth keeps dropping raw earth.
-6. [ ] **Tools are items too.** Sword/bow/shovel/axe/pick live in slots like anything else; they
-       can be dropped, moved, and later crafted, looted and worn out. Bow reads ammo from
-       inventory as now.
-7. [ ] Remove `build.js`'s mode machinery (`enterBuild`/`exitBuild`), keep `canPlaceAt` and the
-       ghost. Remove `buildEntries`. Update legend, DESIGN §5.5 / §7.3, and this file.
-8. [ ] Played: dig, craft a door, drag it to the bar, place it, take it down with the axe, pick
-       the door back up, place it again.
+1. [x] **Hotbar = inventory slots 0–4.** The bar renders `inventory.slots[0..HOTBAR_SIZE-1]`
+       directly — no separate array. Number keys select a slot; `state.held` is that slot
+       index, and `heldId(inventory, held)` resolves it to an item id wherever code needs one
+       (combat.js, tools.js, placement.js, hud.js, renderer.js). `createStartInventory()` seeds
+       sword/bow/shovel/axe/pick into slots 0–4 and 10 arrows into slot 5.
+2. [x] **Drag between inventory and hotbar.** The inventory window shows all 20 slots; the
+       first `HOTBAR_SIZE` get an accent border + `.inv-slot--hotbar` (styling only — `swap()`
+       already worked on any two slots).
+3. [x] **Placeable items.** Each placeable in `ITEMS` carries its own `make(insideDir)`
+       (dirt, leaf, wall, floor, wall_stone, ladder, door, shutter, hatch). `placement.js`
+       (replacing `build.js`) shows the ghost whenever the selected slot's item `kind ===
+       'placeable'`; left click stamps one and takes 1 from that stack. No mode flag — picking
+       another slot is simply not holding a placeable anymore, so nothing to explicitly leave.
+4. [x] **Craft, not Build.** `BUILDS` and the Build… menu entry are gone. `CRAFTS` has all 8
+       structures plus arrows, exactly the costs planned. Crafted output still prefers a free
+       hotbar slot (an artifact of `give()` scanning low indices first, not new logic).
+5. [x] **Dismantle drops the thing.** Every structure's `harvest.drop` in `TILE_DEFS` now
+       names its own item id instead of a raw material (`wall` harvest → `wall`, not `wood`).
+       Zombie-caused breaks still go through `airAfter` with no drop — already true before this
+       phase, just now obviously correct since the two paths clearly diverge.
+6. [x] **Tools are items too.** Sword/bow/shovel/axe/pick are ordinary stacks in ordinary
+       slots; using one never calls `take()` on itself (only bow's ammo is consumed).
+7. [x] `build.js` deleted; `placement.js` keeps `canPlaceAt` and the ghost logic. Legend,
+       DESIGN §5.5/§7.3, and this file updated.
+8. [x] Played (scripted, live game): crafted a wall from wood, dragged it onto the hotbar,
+       placed it (ghost correct, tile appears, stack empties), dismantled it with the axe
+       (4 hits, matching `harvest.hits`), picked the dropped `wall` item back up, placed it
+       again. Separately confirmed a zombie-style break (`damageTile` → `airAfter`) drops
+       nothing, and that sword/bow still fire correctly with slot-resolved `held`.
 
 ### 2b-trees — trunks are blocks, logs → planks
 - [ ] Trunk tile fills the whole 40px block (bark texture edge to edge) so it reads as a block
@@ -246,5 +249,14 @@ Candidate: the MiniFolks packs (Humans → knight, Undead → zombies, Villagers
 - 2026-09-07 — Taking a thing down (harvest) returns the thing; losing it (zombie breaks it) returns nothing.
 - 2026-09-07 — Wood yield in 2D: log → 4 planks at the crafting step, not per-hit trunks. Trunks stay 1 block = 1 log so bark blocks are real, placeable, and cost a full log.
 - 2026-09-08 — Zombie wall-damage needed no new flag: `canZombieDamage(t)` is just "finite hp or a portal" — the same `hp: Infinity` that already marks earth/stone/trees as un-diggable also marks them as un-attackable by zombies.
+- 2026-09-08 — Phase 2b (everything is an item) shipped. `state.held` changed meaning from an
+  item id string to a hotbar slot index — every read site now resolves it via `heldId()`. Watch
+  for this if old code or notes mention `state.held === 'sword'`; that pattern is stale.
+- 2026-09-08 — Test-methodology note for future live-game scripting in the browser console:
+  never call `game.update(dt)` with `dt` larger than 1/30 — the real loop clamps to that, and a
+  bigger step (e.g. used to "fast-forward" a cooldown) can tunnel a body through the ground,
+  since it's a discrete per-frame move-then-resolve, not a continuous simulation. Burned real
+  time chasing a "dismantle doesn't work" ghost that was actually the player having fallen
+  through the world. Advance many small steps instead of few large ones.
 - 2026-09-08 — Dev workflow gotcha: the plain `python -m http.server` sends no cache headers, so the browser can silently keep serving stale JS modules across reloads while editing — cost real debugging time chasing a "bug" that was actually stale code. Fixed with `devserver.mjs` (sends `Cache-Control: no-store`); `.claude/launch.json` now uses it. If a change still doesn't seem to take effect after that, the browser's *disk* cache can still hold entries from before the switch — bump the dev port to get a clean origin rather than chasing it further.
 - 2026-09-07 — Combat numbers are **tuned**, not placeholders: two zombies in a room cost half your HP while playing carefully. `SWORD.*`, `ZOMBIE.HP`, `ZOMBIE.CONTACT_DMG` change only with a reason. Pressure systems (night, hordes, needs) stack on top of this baseline; don't re-tune the baseline to compensate for them.

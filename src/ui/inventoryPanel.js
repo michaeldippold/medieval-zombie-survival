@@ -26,6 +26,7 @@ export class InventoryPanel {
     const grid = document.createElement('div'); grid.className = 'inv-grid'; this.el.appendChild(grid);
     inv.slots.forEach((s, i) => {
       const slot = document.createElement('div'); slot.className = 'inv-slot'; slot.dataset.i = i;
+      if (i < INVENTORY.HOTBAR_SIZE) slot.classList.add('inv-slot--hotbar');
       if (s) {
         const c = document.createElement('canvas'); c.width = TILE; c.height = TILE; c.className = 'inv-icon';
         paintItemIcon(c.getContext('2d'), s.id);
@@ -36,7 +37,7 @@ export class InventoryPanel {
       }
       grid.appendChild(slot);
     });
-    const foot = document.createElement('div'); foot.className = 'inv-foot'; foot.textContent = 'drag to rearrange · I or Esc to close'; this.el.appendChild(foot);
+    const foot = document.createElement('div'); foot.className = 'inv-foot'; foot.textContent = 'top row is your hotbar · drag to rearrange · I or Esc to close'; this.el.appendChild(foot);
   }
 
   startDrag(i, id, e) {

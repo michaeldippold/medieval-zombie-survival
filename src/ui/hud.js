@@ -1,10 +1,9 @@
-// Screen-space HUD: health, enclosure label, inventory, hotbar, hints, death screen.
-import { VIEW, COLORS, UI, SWORD, BOW, TOOLS, PLAYER } from '../config.js';
-import { drawWeapon } from '../render/sprites.js';
-import { HOTBAR, ITEMS } from '../items.js';
+// Screen-space HUD: health, enclosure label, inventory readout, hotbar, hints, death screen.
+import { VIEW, TILE, COLORS, UI, SWORD, BOW, TOOLS, PLAYER, INVENTORY } from '../config.js';
+import { paintItemIcon } from '../render/icons.js';
+import { ITEMS } from '../items.js';
 import { count } from '../inventory.js';
 import { isFeverish } from '../entities/player.js';
-import { buildById } from '../build.js';
 
 const MONO = '"IBM Plex Mono", monospace';
 
@@ -28,17 +27,17 @@ export function drawHud(ctx, state) {
   ctx.fillStyle = vision.exposed ? 'rgba(230,57,70,0.85)' : 'rgba(30,110,60,0.85)'; ctx.fillRect(W / 2 - tw / 2 - 10, 10, tw + 20, 22);
   ctx.fillStyle = '#fff'; ctx.fillText(label, W / 2 - tw / 2, 26);
 
-  // inventory readout, top right
+  // inventory readout, top right — just the raw materials, since tools/weapons/placeables live on the bar
   ctx.font = `12px ${MONO}`; ctx.textAlign = 'right';
-  const inv = ['wood', 'stone', 'dirt', 'leaf'].filter(id => count(inventory, id) > 0).map(id => `${ITEMS[id].name.toLowerCase()} ${count(inventory, id)}`).join('  ·  ') || 'I · inventory';
+  const inv = ['wood', 'stone'].filter(id => count(inventory, id) > 0).map(id => `${ITEMS[id].name.toLowerCase()} ${count(inventory, id)}`).join('  ·  ') || 'I · inventory';
   ctx.fillStyle = COLORS.hud; ctx.fillRect(W - 12 - ctx.measureText(inv).width - 16, 12, ctx.measureText(inv).width + 16, 18);
   ctx.fillStyle = '#fff'; ctx.fillText(inv, W - 20, 25);
   ctx.textAlign = 'left';
 
   drawHotbar(ctx, state);
 
-  if (state.build) {
-    const label = `Building ${buildById(state.build.id).label.toLowerCase()} · click to place · Esc to stop`;
+  if (state.ghost) {
+    const label = `${ITEMS[state.ghost.itemId].name} selected · click to place`;
     ctx.font = `bold 12px ${MONO}`; ctx.textAlign = 'center';
     const bw = ctx.measureText(label).width;
     ctx.fillStyle = 'rgba(30,110,60,0.85)'; ctx.fillRect(W / 2 - bw / 2 - 10, H - UI.HOTBAR_SLOT - 40, bw + 20, 20);
@@ -48,7 +47,7 @@ export function drawHud(ctx, state) {
   if (state.hint) {
     ctx.font = `12px ${MONO}`; ctx.textAlign = 'center';
     ctx.fillStyle = `rgba(255,255,255,${Math.min(1, state.hint.t / 0.4)})`;
-    ctx.fillText(state.hint.text, W / 2, H - UI.HOTBAR_SLOT - (state.build ? 48 : 22));
+    ctx.fillText(state.hint.text, W / 2, H - UI.HOTBAR_SLOT - (state.ghost ? 48 : 22));
     ctx.textAlign = 'left';
   }
 
@@ -66,24 +65,34 @@ function overlay(ctx, title, sub) {
 }
 
 function drawHotbar(ctx, state) {
-  const size = UI.HOTBAR_SLOT, gap = UI.HOTBAR_GAP;
-  const x0 = (VIEW.W - (HOTBAR.length * size + (HOTBAR.length - 1) * gap)) / 2, y0 = VIEW.H - size - 12;
-  HOTBAR.forEach((id, i) => {
-    const x = x0 + i * (size + gap), selected = id === state.held;
+  const size = UI.HOTBAR_SLOT, gap = UI.HOTBAR_GAP, n = INVENTORY.HOTBAR_SIZE;
+  const x0 = (VIEW.W - (n * size + (n - 1) * gap)) / 2, y0 = VIEW.H - size - 12;
+  for (let i = 0; i < n; i++) {
+    const stack = state.inventory.slots[i];
+    const item = stack && ITEMS[stack.id];
+    const x = x0 + i * (size + gap), selected = i === state.held;
     const s = 1 + 0.18 * Math.sin((selected ? state.hotbarAnim / UI.HOTBAR_POP : 0) * Math.PI);
     ctx.save(); ctx.translate(x + size / 2, y0 + size / 2); ctx.scale(s, s);
     ctx.fillStyle = COLORS.hud; ctx.fillRect(-size / 2, -size / 2, size, size);
     ctx.lineWidth = selected ? 3 : 1.5; ctx.strokeStyle = selected ? COLORS.accent : 'rgba(255,255,255,0.35)';
     ctx.strokeRect(-size / 2 + 1, -size / 2 + 1, size - 2, size - 2);
-    ctx.save(); ctx.translate(-14, 10); ctx.rotate(-Math.PI / 4); drawWeapon(ctx, id); ctx.restore();
+
+    if (stack) {
+      ctx.save(); ctx.translate(-TILE / 2, -TILE / 2); paintItemIcon(ctx, stack.id); ctx.restore();
+      ctx.textAlign = 'right';
+      if (item.kind !== 'weapon' && item.kind !== 'tool') { ctx.fillStyle = '#fff'; ctx.font = `11px ${MONO}`; ctx.fillText(String(stack.n), size / 2 - 4, size / 2 - 5); }
+      if (item.ammo) { ctx.fillStyle = count(state.inventory, item.ammo) > 0 ? '#fff' : COLORS.alert; ctx.font = `11px ${MONO}`; ctx.fillText(String(count(state.inventory, item.ammo)), size / 2 - 4, size / 2 - 5); }
+      ctx.textAlign = 'left';
+    }
+
     ctx.fillStyle = selected ? COLORS.accent : 'rgba(255,255,255,0.7)'; ctx.font = `11px ${MONO}`;
     ctx.fillText(String(i + 1), -size / 2 + 5, -size / 2 + 13);
-    const ammo = ITEMS[id].ammo;
-    if (ammo) { ctx.textAlign = 'right'; ctx.fillStyle = count(state.inventory, ammo) > 0 ? '#fff' : COLORS.alert; ctx.fillText(String(count(state.inventory, ammo)), size / 2 - 4, size / 2 - 5); ctx.textAlign = 'left'; }
-    const cool = id === 'sword' && state.swing ? 1 - state.swing.t / SWORD.TOTAL
-      : id === 'bow' ? state.bowCool / BOW.COOLDOWN
-      : ITEMS[id].kind === 'tool' ? state.toolCool / TOOLS.COOLDOWN : 0;
+
+    const cool = !stack ? 0
+      : stack.id === 'sword' && state.swing ? 1 - state.swing.t / SWORD.TOTAL
+      : stack.id === 'bow' ? state.bowCool / BOW.COOLDOWN
+      : item.kind === 'tool' ? state.toolCool / TOOLS.COOLDOWN : 0;
     if (cool > 0) { ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(-size / 2, -size / 2, size * cool, size); }
     ctx.restore();
-  });
+  }
 }

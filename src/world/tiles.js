@@ -8,6 +8,11 @@ import { PORTAL } from '../config.js';
 //   harvest.drop   item given (on removal, or every hit when perHit)
 // Look: a block with `color` (and optional `cap`, `edge`) is painted by the default painter;
 // only blocks with a distinctive look need an entry in render/tiles.js. A plain new block is one row here.
+//
+// harvest.drop on a natural tile (dirt/stone/trunk/leaf) is a raw material — digging it up
+// literally gives you that material. On a built tile (wall/floor/door/...) it is the tile's
+// OWN item id: dismantling gives back the exact thing, which can be carried and placed again.
+// A tile a zombie breaks (not harvested) never drops anything — see world/vision.js airAfter callers.
 export const TILE_DEFS = {
   air:        { solid: false, opaque: false },
   dirt:       { solid: true,  opaque: true, hp: Infinity, color: '#7a4f2a', harvest: { tool: 'shovel', hits: 2, drop: 'dirt' } },
@@ -16,13 +21,13 @@ export const TILE_DEFS = {
   bedrock:    { solid: true,  opaque: true, hp: Infinity, color: '#2b2d31' },
   trunk:      { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'axe', hits: 1, drop: 'wood' } },
   leaf:       { solid: false, opaque: false, hp: Infinity, harvest: { tool: 'any', hits: 1, drop: 'leaf' } },
-  wall:       { solid: true,  opaque: true, hp: 300, color: '#c9a978', edge: 'rgba(0,0,0,0.18)', harvest: { tool: 'axe', hits: 4, drop: 'wood' } },
-  wall_stone: { solid: true,  opaque: true, hp: 900, harvest: { tool: 'pick', hits: 6, drop: 'stone' } },
-  floor:      { solid: true,  opaque: true, hp: 120, harvest: { tool: 'axe', hits: 2, drop: 'wood' } },
-  ladder:     { solid: false, opaque: false, hp: 40, climbable: true, harvest: { tool: 'axe', hits: 1, drop: 'wood' } },
-  door:       { portal: true, hp: 150, name: 'door',     barFrom: 'inside', harvest: { tool: 'axe', hits: 3, drop: 'wood' } },
-  shutter:    { portal: true, hp: 60,  name: 'shutter',  barFrom: 'inside', climbThrough: true, harvest: { tool: 'axe', hits: 2, drop: 'wood' } },
-  hatch:      { portal: true, hp: 120, name: 'trapdoor', barFrom: 'above',  climbableWhenOpen: true, harvest: { tool: 'axe', hits: 3, drop: 'wood' } },
+  wall:       { solid: true,  opaque: true, hp: 300, color: '#c9a978', edge: 'rgba(0,0,0,0.18)', harvest: { tool: 'axe', hits: 4, drop: 'wall' } },
+  wall_stone: { solid: true,  opaque: true, hp: 900, harvest: { tool: 'pick', hits: 6, drop: 'wall_stone' } },
+  floor:      { solid: true,  opaque: true, hp: 120, harvest: { tool: 'axe', hits: 2, drop: 'floor' } },
+  ladder:     { solid: false, opaque: false, hp: 40, climbable: true, harvest: { tool: 'axe', hits: 1, drop: 'ladder' } },
+  door:       { portal: true, hp: 150, name: 'door',     barFrom: 'inside', harvest: { tool: 'axe', hits: 3, drop: 'door' } },
+  shutter:    { portal: true, hp: 60,  name: 'shutter',  barFrom: 'inside', climbThrough: true, harvest: { tool: 'axe', hits: 2, drop: 'shutter' } },
+  hatch:      { portal: true, hp: 120, name: 'trapdoor', barFrom: 'above',  climbableWhenOpen: true, harvest: { tool: 'axe', hits: 3, drop: 'hatch' } },
 };
 
 export const TOOL_NAMES = { shovel: 'a shovel', axe: 'an axe', pick: 'a pickaxe', any: 'anything' };

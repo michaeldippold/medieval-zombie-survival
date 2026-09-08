@@ -1,25 +1,27 @@
 // Sword (sector hitbox with wind-up/recovery) and bow (hitscan with a presentation-only homing arrow).
-import { SWORD, BOW, UI } from './config.js';
+// `state.held` is a hotbar slot index (0..HOTBAR_SIZE-1); what it does depends entirely on
+// which item currently sits in that slot — selecting a non-weapon slot just makes this a no-op.
+import { SWORD, BOW, UI, INVENTORY } from './config.js';
 import { sectorHits, rayBox } from './physics.js';
 import { hurtZombie } from './entities/zombie.js';
-import { HOTBAR } from './items.js';
-import { count, take } from './inventory.js';
+import { count, take, heldId } from './inventory.js';
 import { spawnDrop } from './entities/drops.js';
 import { showHint } from './ui/hints.js';
 
 export function updateHotbar(state) {
   const slot = state.input.actions.slot;
-  if (slot && HOTBAR[slot - 1] && HOTBAR[slot - 1] !== state.held) { state.held = HOTBAR[slot - 1]; state.hotbarAnim = UI.HOTBAR_POP; }
+  if (slot && slot <= INVENTORY.HOTBAR_SIZE && slot - 1 !== state.held) { state.held = slot - 1; state.hotbarAnim = UI.HOTBAR_POP; }
 }
 
 export function updateCombat(state, dt) {
   const { player: p, input, world, zombies, vision } = state;
   const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
+  const held = heldId(state.inventory, state.held);
   state.hotbarAnim = Math.max(0, state.hotbarAnim - dt);
   const use = input.actions.use && !p.dead;
 
   // ---- sword
-  if (use && state.held === 'sword' && !state.swing) state.swing = { angle: state.aim, t: 0, hit: new Set() };
+  if (use && held === 'sword' && !state.swing) state.swing = { angle: state.aim, t: 0, hit: new Set() };
   const s = state.swing;
   if (s) {
     s.t += dt;
@@ -34,7 +36,7 @@ export function updateCombat(state, dt) {
 
   // ---- bow: resolve the hit now; the arrow is only a picture of it
   state.bowCool = Math.max(0, state.bowCool - dt);
-  if (use && state.held === 'bow' && state.bowCool === 0) {
+  if (use && held === 'bow' && state.bowCool === 0) {
     if (count(state.inventory, 'arrow') <= 0) { showHint(state, 'no arrows'); state.bowCool = 0.2; }
     else {
       take(state.inventory, { arrow: 1 });

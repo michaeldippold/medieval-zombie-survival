@@ -1,17 +1,17 @@
 // Tool use: left-click with a shovel / axe / pickaxe harvests the tile under the cursor, in reach.
 import { TILE, PLAYER, TOOLS } from './config.js';
 import { ITEMS } from './items.js';
+import { heldId } from './inventory.js';
 import { defOf, harvestTile, airAfter, isSolid, TOOL_NAMES } from './world/tiles.js';
-import { give } from './inventory.js';
 import { spawnDrop } from './entities/drops.js';
 import { showHint } from './ui/hints.js';
 
 export function updateTools(state, dt) {
   const { world, player: p, input } = state;
   state.toolCool = Math.max(0, state.toolCool - dt);
-  const item = ITEMS[state.held];
+  const item = ITEMS[heldId(state.inventory, state.held)];
   state.target = null;
-  if (item.kind !== 'tool' || p.dead) return;
+  if (!item || item.kind !== 'tool' || p.dead) return;
 
   const c = world.colOf(input.mouse.wx), r = world.rowOf(input.mouse.wy);
   const t = world.get(c, r);

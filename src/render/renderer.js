@@ -1,11 +1,11 @@
 // Draws the world from state. Reads only; never mutates state.
 import { TILE as T, VIEW, COLORS } from '../config.js';
-import { isPortal, isAir } from '../world/tiles.js';
+import { isPortal } from '../world/tiles.js';
 import { ITEMS } from '../items.js';
+import { heldId } from '../inventory.js';
 import { paintTile } from './tiles.js';
 import { drawPlayer, drawZombie, drawSwing, drawArrow, drawDrop } from './sprites.js';
 import { drawHud } from '../ui/hud.js';
-import { buildById } from '../build.js';
 
 export function render(ctx, state) {
   const { world, camera, vision, player: p, input } = state;
@@ -35,23 +35,24 @@ export function render(ctx, state) {
 
   const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
   if (state.swing) drawSwing(ctx, pcx, pcy, state.swing);
-  drawPlayer(ctx, p, state.aim, state.held);
+  drawPlayer(ctx, p, state.aim, heldId(state.inventory, state.held));
   for (const a of state.arrows) drawArrow(ctx, a);
 
-  // cursor feedback: build ghost, or outlines for portals / buildable air / tool targets
+  // cursor feedback: a placement ghost when a placeable is selected, else outlines for a tool
+  // target or a portal under the cursor
   const mc = world.colOf(input.mouse.wx), mr = world.rowOf(input.mouse.wy);
   const hover = world.get(mc, mr);
-  if (state.build) {
-    const b = state.build, def = buildById(b.id);
-    const insideDir = Math.sign(p.x + p.w / 2 - (b.c * T + T / 2)) || 1;
-    ctx.save(); ctx.globalAlpha = 0.5; paintTile(ctx, b.c, b.r, def.make(insideDir)); ctx.restore();
-    ctx.strokeStyle = b.ok ? COLORS.ghostOk : COLORS.ghostBad; ctx.lineWidth = 2;
-    ctx.strokeRect(b.c * T - 1, b.r * T - 1, T + 2, T + 2);
+  if (state.ghost) {
+    const g = state.ghost;
+    const insideDir = Math.sign(pcx - (g.c * T + T / 2)) || 1;
+    ctx.save(); ctx.globalAlpha = 0.5; paintTile(ctx, g.c, g.r, ITEMS[g.itemId].make(insideDir)); ctx.restore();
+    ctx.strokeStyle = g.ok ? COLORS.ghostOk : COLORS.ghostBad; ctx.lineWidth = 2;
+    ctx.strokeRect(g.c * T - 1, g.r * T - 1, T + 2, T + 2);
   } else if (state.target) {
     ctx.strokeStyle = state.target.near ? COLORS.accent : 'rgba(242,177,52,0.4)'; ctx.lineWidth = 2;
     ctx.strokeRect(state.target.c * T - 2, state.target.r * T - 2, T + 4, T + 4);
-  } else if (isPortal(hover) || (ITEMS[state.held].kind !== 'tool' && isAir(hover) && world.inBounds(mc, mr))) {
-    ctx.strokeStyle = isPortal(hover) ? COLORS.accent : 'rgba(255,255,255,0.35)'; ctx.lineWidth = isPortal(hover) ? 2 : 1;
+  } else if (isPortal(hover)) {
+    ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 2;
     ctx.strokeRect(mc * T - 2, mr * T - 2, T + 4, T + 4);
   }
 

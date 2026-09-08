@@ -176,14 +176,14 @@ opaque = solid
   picked up by walking over them. Stone yields every hit; everything else on removal.
 - What's left behind: earth tiles become air with a dark-earth `back`; structure tiles keep
   whatever `back` they had (plaster inside, sky outside).
-- **Placing** (target model, TODO Phase 2b; the current Build… palette is the interim): a
-  placeable is an *item*. Hold it on the hotbar and it follows the cursor as a half-opaque
-  ghost, outlined green where it can go and red where it can't (not empty, blocked by a
-  body, too far, none left). Each left click stamps one and takes one from the stack.
-  Selecting another slot is the exit; there is no build mode. Raw blocks (dirt, stone,
-  leaves) are placeable straight from the ground; structures (walls, floors, ladders, doors,
-  shutters, trapdoors) are crafted from wood or stone first. Doors and shutters take their
-  "inside" from the side the player stood on. Placed tiles inherit the air tile's `back`.
+- **Placing**: a placeable is an *item* (`src/placement.js`). Hold it on the hotbar and it
+  follows the cursor as a half-opaque ghost, outlined green where it can go and red where it
+  can't (not empty, blocked by a body, too far, none left). Each left click stamps one and
+  takes one from the stack. Selecting another slot is the exit; there is no build mode — the
+  held item *is* the mode. Raw blocks (dirt, leaves) are placeable straight from the ground;
+  structures (walls, floors, ladders, doors, shutters, trapdoors) are crafted from wood or
+  stone first (§7.3). Doors and shutters take their "inside" from the side the player stood
+  on. Placed tiles inherit the air tile's `back`.
 - **Dismantling** is harvesting a built tile with the matching tool. It drops the *item*
   (a door drops a door), so anything you built can be moved. A tile a zombie breaks drops
   nothing — losing it and taking it down are different.
@@ -241,20 +241,40 @@ See §6. Facing follows the mouse. The held item is drawn pointed at the mouse.
 - Cure: none in the base design. A late-game rare cure is possible but must be genuinely
   rare or pillar 4 collapses.
 
-### 7.3 Inventory and hotbar
-- Hotbar: `1` sword · `2` bow · `3` shovel · `4` axe · `5` pickaxe. Left click = use the
-  selected item on the world or on enemies. Right click = context menu for the tile under
-  the cursor: interact with portals, build into air, craft (never an attack).
-- **Inventory**: 20 slots (5×4), one stack per item id, stacks are unlimited — so the slot
-  count is the only limit and it bites when you carry many *different* things. A DOM window
-  on `I`/`Tab`; click-and-hold a stack and release on another slot to swap. When every slot
-  is taken, drops stay on the ground ("inventory full"). Build and craft pull from it.
-- **Crafting**: right-click → Craft… opens the same palette widget as Build, titled Craft.
-  Each entry is a recipe (`cost` → `gives`); affordable ones are lit; a click crafts one
-  batch and the palette stays open with refreshed counts. Recipes are data in `items.js`.
-  Nothing crafted ever goes straight into a context menu.
-- Items are `{ id, n }`; item definitions in `items.js` hold kind (weapon / tool / material),
-  tool type, and ammo.
+### 7.3 Inventory and hotbar — everything is an item
+
+There is one inventory: 20 slots (5×4), one stack per item id, stacks unlimited — the slot
+*count* is the only limit, and it bites only when you carry many *different* things. **The
+hotbar is not a separate structure: it is slots `0..HOTBAR_SIZE-1` (5) of that same
+inventory.** `state.held` is a slot index, not an item id; `heldId(inventory, held)` resolves
+it wherever a system needs to know what's selected. Number keys `1`–`5` select those slots.
+A fresh game seeds sword/bow/shovel/axe/pickaxe into slots 0–4 and 10 arrows into slot 5, so
+day one plays exactly as if the hotbar were fixed — it just isn't, underneath.
+
+- **Using an item** (left click) dispatches on its `kind`: `weapon` swings/shoots (never
+  consumed), `tool` harvests the tile in reach (never consumed — no durability yet),
+  `placeable` shows a ghost and stamps a copy into the world, consuming one from the stack
+  (`src/placement.js`). Selecting a different slot is the only way to stop placing —
+  there is no separate build mode, because the held item *is* the mode. `material`
+  (wood, stone, arrows) has no left-click behaviour of its own; it's consumed by recipes
+  or by the bow.
+- **Crafting**: right-click empty ground → Craft… opens a palette of recipes (`cost` →
+  `gives`, data in `items.js`); affordable ones are lit; a click crafts one batch and the
+  palette stays open with refreshed counts. Output prefers a free hotbar slot, then the rest
+  of the inventory, then drops at your feet if nothing fits. Placeable items (all the
+  structures) only ever enter play through a recipe or as loot — never straight from a
+  menu — so a wall in your hand is always something you made or found.
+- **Dismantling and looting therefore compose for free**: a structure's `harvest.drop` names
+  its own item id, so taking one down with the matching tool hands you back the exact
+  placeable, ready to carry and place again elsewhere. A `door` in a ruin, a `wall` pried off
+  a failing base — same item, same slot, same ghost-and-place flow as one you crafted.
+- **Inventory window** (`I`/`Tab`): all 20 slots, the hotbar row marked with an accent
+  border; click-and-hold a stack and release on another slot to swap (works between the bar
+  and the rest of the pack identically — swapping *is* how you equip something). When every
+  slot is full, drops stay on the ground ("inventory full").
+- Item definitions in `items.js`: `kind` (`weapon` / `tool` / `material` / `placeable`),
+  `tool` (which harvest.tool it matches), `ammo` (material it consumes), `make(insideDir)`
+  (the tile a placeable becomes).
 
 ### 7.4 Needs (not built yet — the next major system after digging)
 - **Hunger**, **thirst**, **fatigue**. Each is a 0–100 meter that drains with time (faster
@@ -431,32 +451,47 @@ with methods in the state tree, no closures).
 
 ```
 index.html                 page shell, CSS tokens, canvas + DOM UI mounts
-src/main.js                bootstrap + RAF loop
-src/config.js              every tunable constant, grouped, exported
-src/game.js                creates the state object; runs systems in order
-src/input.js               keyboard/mouse → per-frame action flags + mouse world coords
-src/physics.js             overlap, moveBody, sectorHits, rayBox, onClimbable, tryClimb
-src/world/tiles.js         tile definitions, makeTile, isSolid/isOpaque/isClimbable/isPortal, damageTile
-src/world/world.js         World: grid, get/set, tileAtPx, solidsNear, allSolidRects, version
-src/world/maps.js          hand-built starter map(s)
-src/world/vision.js        computeVision → { visible, exposed }
-src/entities/player.js     createPlayer, updatePlayer
-src/entities/zombie.js     createZombie, updateZombies, hurtZombie
-src/combat.js              swing + arrows
-src/interactions.js        portal/tile context-menu items and their effects
-src/ui/menu.js             ContextMenu (DOM widget, knows nothing about the game)
-src/ui/hud.js              canvas HUD + hotbar
-src/render/renderer.js     camera, layer order, culling, calls painters
-src/render/tiles.js        paintTile and friends
-src/render/sprites.js      drawWeapon, zombie/player boxes, arrows
+devserver.mjs               local dev server (sends Cache-Control: no-store — see §17 note)
+src/main.js                 bootstrap + RAF loop
+src/config.js                every tunable constant, grouped, exported
+src/game.js                  creates the state object; runs systems in order
+src/input.js                 keyboard/mouse → per-frame action flags + mouse world coords
+src/physics.js                overlap, moveBody, sectorHits, rayBox, onClimbable, tryClimb
+src/items.js                  ITEMS, STARTER_LOADOUT, CRAFTS — the whole item vocabulary, data only
+src/inventory.js              slots array: createStartInventory, give/take/swap, heldId, count
+src/world/tiles.js            tile definitions, makeTile, isSolid/isOpaque/isClimbable/isPortal,
+                               canZombieDamage, damageTile, harvestTile, airAfter, integrity
+src/world/world.js            World: grid, get/set, tileAtPx, solidsNear, allSolidRects, surface, version
+src/world/maps.js             seeded starter world generator
+src/world/vision.js           computeVision → { visible, exposed }
+src/entities/player.js        createPlayer, updatePlayer, hurtPlayer, isFeverish
+src/entities/zombie.js        createZombie, updateZombies, hurtZombie (senses, decide, scramble, attack)
+src/entities/drops.js         spawnDrop, updateDrops — items lying in the world
+src/combat.js                 sword swing + hitscan/homing-arrow bow; updateHotbar (slot select)
+src/tools.js                  shovel/axe/pick harvesting the tile under the cursor
+src/placement.js              the ghost + stamp for whatever placeable is currently held
+src/interactions.js           context-menu items for a tile; the Craft palette's entries + craft()
+src/ui/hints.js                the one-line transient hint ("no arrows", "too far")
+src/ui/menu.js                 ContextMenu (DOM widget, knows nothing about the game)
+src/ui/palette.js              generic thumbnail-grid palette (used for Craft)
+src/ui/inventoryPanel.js       the inventory window; drag-to-swap
+src/ui/hud.js                  canvas HUD: health, enclosure label, hotbar, ghost/hint banners
+src/render/renderer.js         camera, layer order, culling, calls painters
+src/render/tiles.js            paintTile + the default plain-block painter
+src/render/sprites.js          drawWeapon, player/zombie boxes, swing arc, arrows
+src/render/icons.js            40×40 item icons for the hotbar/inventory (placeables reuse paintTile)
 ```
 
-**State** is one plain object owned by `game.js`: `{ world, player, zombies, arrows, swing,
-camera, vision, attention, time, kills, flags }`. Systems are functions `(state, dt)`.
-Nothing holds a reference to another system. Rendering reads state and never mutates it.
+**State** is one plain object owned by `game.js`: `{ world, player, zombies, drops, arrows,
+inventory, swing, target, ghost, camera, vision, attention, time, kills, held, paused }`.
+Systems are functions `(state, dt)`. Nothing holds a reference to another system. Rendering
+reads state and never mutates it.
 
-**Update order** (per frame): input → player → vision → zombies → attention → camera/aim →
-combat → cleanup → UI text. Vision runs after the player moves and before zombies think,
+**Update order** (per frame): input → player → vision → zombies → camera/aim → tools →
+combat → placement → drops → hints. Tools, combat and placement are all called
+unconditionally every frame; each checks the currently held item's `kind` and no-ops if it
+doesn't apply — there is no mode flag gating which one runs (see §7.3). Vision runs after
+the player moves and before zombies think,
 because zombies decide using this frame's visibility.
 
 **Tunables** live in `config.js` only. A number in a system file is a bug.

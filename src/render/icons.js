@@ -1,14 +1,14 @@
-// 40×40 item icons for inventory and palettes. Tiles reuse their painter; the rest are drawn here.
+// 40×40 item icons for the hotbar and inventory panel. A placeable item draws as its own tile
+// (via ITEMS[id].make) with zero extra code — add a new placeable and its icon just works.
 import { TILE, COLORS } from '../config.js';
-import { makeTile } from '../world/tiles.js';
+import { ITEMS } from '../items.js';
 import { paintTile } from './tiles.js';
 import { drawWeapon } from './sprites.js';
 
-const TILE_ICON = { dirt: 'dirt', stone: 'stone', leaf: 'leaf' };
-
 export function paintItemIcon(ctx, id) {
   ctx.clearRect(0, 0, TILE, TILE);
-  if (TILE_ICON[id]) { paintTile(ctx, 0, 0, makeTile(TILE_ICON[id])); return; }
+  const item = ITEMS[id];
+  if (item?.make) { paintTile(ctx, 0, 0, item.make(1)); return; }
   switch (id) {
     case 'wood':
       for (let i = 0; i < 3; i++) { ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(4, 6 + i * 11, 32, 9); ctx.fillStyle = COLORS.frame; ctx.fillRect(4, 13 + i * 11, 32, 2); }

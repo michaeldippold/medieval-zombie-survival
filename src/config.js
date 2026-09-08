@@ -41,8 +41,9 @@ export const BOW = { RANGE: 800, COOLDOWN: 0.6, ARROW_SPEED: 1100, ARROW_STICK: 
 
 export const TOOLS = { COOLDOWN: 0.3 };
 
-export const START_INVENTORY = { arrow: 10 };
-export const INVENTORY = { SLOTS: 20, COLS: 5 };   // one stack per item id, stacks are unlimited; the slot count is the limit
+// One stack per item id, stacks are unlimited; the slot count is the limit. Slots 0..HOTBAR_SIZE-1
+// ARE the hotbar (see items.js STARTER_LOADOUT) — there is no separate hotbar array.
+export const INVENTORY = { SLOTS: 20, COLS: 5, HOTBAR_SIZE: 5 };
 
 export const DROPS = { SIZE: 12, FRICTION: 6, PICKUP_PAD: 6, POP_VX: 60, POP_VY: -220 };
 
