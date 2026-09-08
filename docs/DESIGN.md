@@ -367,6 +367,20 @@ dead        — corpse lingers 2.5 s, fades 1 s, despawns
 ```
 Memory: `lastSeen {x, y, t}`. Cleared on arrival (within 12 px, same row) or after 6 s.
 
+**"Target is above" only trusts a *grounded* sighting.** `lastSeen.y` updates to the player's
+live y every visible frame — including mid-air — and a full jump clears well over a tile at
+these physics constants (apex ≈114 px against `TILE` = 40). Using it directly for the
+above/below check meant any jump near any zombie briefly read as "they're on a different
+floor," which sent the zombie to `nearestClimbColumn` — the closest climbable tile *anywhere in
+the world*, often a single distant ladder — and back again the instant the player landed; a
+zombie that reached that ladder while still mid-decision could climb, lose the (grounded again)
+target, drop, and repeat forever. Fixed by tracking a second field, `lastGroundedY`, updated
+only when `canSee && player.onGround`; the climb decision (`targetAbove`) reads this instead of
+`lastSeen.y`, so a jump on flat ground is invisible to it and a genuine change of floor (player
+standing still up on a loft) is still detected correctly. Cleared alongside `lastSeen`, and
+also cleared (not inherited) when a wanderer picks up a sighting from `attention`, since that
+shared point's y isn't known to have been grounded.
+
 ### 8.4 Breaking in
 A blocked zombie looks at the column in front of it — its own row and one row above — for a
 solid portal, and attacks it. Shutters (60) go in three hits; doors (150) in eight; each bar

@@ -11,7 +11,7 @@ export function createZombie(x, y) {
     dir: Math.random() < 0.5 ? -1 : 1, speed: ZOMBIE.SPEED_MIN + Math.random() * ZOMBIE.SPEED_VAR,
     timer: 1 + Math.random() * 2, color: COLORS.zombies[paletteIdx++ % COLORS.zombies.length],
     hp: ZOMBIE.HP, stunned: false, flash: 0, death: 0, dead: 0,
-    chasing: false, lastSeen: null, sees: false, attackT: 0, lunge: 0, hitCd: 0,
+    chasing: false, lastSeen: null, lastGroundedY: null, sees: false, attackT: 0, lunge: 0, hitCd: 0,
     climbing: false, scrambling: false, scramble: null, stagger: 0, kbDir: 0,
   };
 }
@@ -75,21 +75,28 @@ export function updateZombies(state, dt) {
       const dxp = pcx - ec;
       const canSee = !player.dead && vision.visible.has(world.idxAtPx(ec, ecy)) && Math.abs(dxp) < ZOMBIE.SIGHT_X && Math.abs(pcy - ecy) < ZOMBIE.SIGHT_Y;
       e.sees = canSee; if (canSee) anySees = true;
-      if (canSee) e.lastSeen = { x: pcx, y: pcy, t: 0 };
-      else if (e.lastSeen) {
+      if (canSee) {
+        e.lastSeen = { x: pcx, y: pcy, t: 0 };
+        // Only a grounded sighting counts as "they're on a different floor" — a mid-air jump
+        // arc clears a tile of height easily and used to send zombies straight to the nearest
+        // ladder in the world (usually the house's, wherever that was) every time the player
+        // jumped, then back again on landing. Coast on the last grounded reading through a jump.
+        if (player.onGround) e.lastGroundedY = pcy;
+      } else if (e.lastSeen) {
         e.lastSeen.t += dt;
         const arrived = Math.abs(e.lastSeen.x - ec) < 12 && Math.abs(e.lastSeen.y - ecy) < TILE;
-        if (e.lastSeen.t > ZOMBIE.MEMORY || arrived) e.lastSeen = null;
+        if (e.lastSeen.t > ZOMBIE.MEMORY || arrived) { e.lastSeen = null; e.lastGroundedY = null; }
       }
       if (!e.lastSeen && state.attention && Math.abs(state.attention.x - ec) < ATTENTION.RANGE) {
         e.lastSeen = { x: state.attention.x, y: state.attention.y, t: ZOMBIE.MEMORY - 2 };
+        e.lastGroundedY = null;   // attention's y isn't known to be grounded — assume same-level until proven otherwise
       }
 
       // ---- decide
       if (e.stagger > 0) { e.vx = e.kbDir * ZOMBIE.STAGGER_SPEED; e.chasing = !!e.lastSeen; }
       else if (e.lastSeen) {
         e.chasing = true;
-        const targetAbove = e.lastSeen.y < e.y + e.h - TILE;      // climb until our feet are level with the target
+        const targetAbove = e.lastGroundedY != null && e.lastGroundedY < e.y + e.h - TILE;   // climb until our feet are level with the target
         let goalX = e.lastSeen.x;
         if (targetAbove) { const col = nearestClimbColumn(world, ec); if (col !== null) goalX = col * TILE + TILE / 2; }
         const d = goalX - ec;
