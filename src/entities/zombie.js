@@ -23,7 +23,7 @@ export function hurtZombie(state, e, dmg, fromX) {
   if (e.hp <= 0) { e.stunned = true; e.vx = 0; e.death = ZOMBIE.DEATH_DUR; state.kills++; }
 }
 
-// The nearest solid, damageable tile (door/shutter/trapdoor, or a built wall/floor) directly in
+// The nearest solid, damageable tile (a door, a window, a trapdoor, or a built wall/floor) directly in
 // front of a blocked zombie, if any. Zombies reach one tile up. Earth and trees are never
 // returned here (canZombieDamage is false for them) — that's what makes them un-diggable.
 function attackableInFront(world, e) {

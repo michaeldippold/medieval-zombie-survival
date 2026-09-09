@@ -1,6 +1,6 @@
 // Tile definitions and the questions asked of every tile: does it block movement, does it block
 // sight, what breaks it, what harvests it. Both blocking answers depend on state for portals. DESIGN §5.
-import { PORTAL } from '../config.js';
+import { REINFORCE } from '../config.js';
 
 // hp: what zombies chew through (Infinity = they can't). harvest: what the player's tools do.
 //   harvest.tool   'shovel' | 'axe' | 'pick' | 'any'
@@ -47,9 +47,15 @@ export const TILE_DEFS = {
   // fit through anything with a solid wall above it. `footprint` names the extra cell(s) a
   // placed instance occupies, relative to the anchor cell it's placed at — see `stampMulti`.
   // The trapdoor stays one tall; it's floored, not walked through vertically.
-  door:       { portal: true, hp: 150, name: 'door',     barFrom: 'inside', harvest: { tool: 'axe', hits: 3, drop: 'door' }, footprint: [[0, -1]] },
-  shutter:    { portal: true, hp: 60,  name: 'shutter',  barFrom: 'inside', climbThrough: true, harvest: { tool: 'axe', hits: 2, drop: 'shutter' }, footprint: [[0, -1]] },
-  hatch:      { portal: true, hp: 120, name: 'trapdoor', barFrom: 'above',  climbableWhenOpen: true, harvest: { tool: 'axe', hits: 3, drop: 'hatch' } },
+  door:       { portal: true, hp: 150, name: 'door',     barFrom: 'inside', reinforceLabel: 'Bar', harvest: { tool: 'axe', hits: 3, drop: 'door' }, footprint: [[0, -1]] },
+  hatch:      { portal: true, hp: 120, name: 'trapdoor', barFrom: 'above',  reinforceLabel: 'Bar', climbableWhenOpen: true, harvest: { tool: 'axe', hits: 3, drop: 'hatch' } },
+
+  // A window is just glass in a wall (DESIGN §5.4b) — no footprint; a "2-tall window" is two
+  // of these tiles the player happened to stack, each independently solid/hp/curtain. The
+  // first tile where solid and opaque genuinely differ: sight passes, bodies don't. `curtain`
+  // (state, §11.1) and `bars` (reinforcement, same mechanism as a door's — boarding a window
+  // — §11.1) each independently make it opaque; see `isOpaque` below.
+  glass:      { solid: true,  opaque: false, hp: 40, reinforceLabel: 'Board', curtainable: true, harvest: { tool: 'pick', hits: 1, drop: 'glass' } },
 
   // Proves the `contact` hook (DESIGN §5.3/§8): a rule-ful block that's still just a row plus
   // one predicate, checked once in the player's body step (see entities/player.js). Not placed
@@ -62,7 +68,7 @@ export const TOOL_NAMES = { shovel: 'a shovel', axe: 'an axe', pick: 'a pickaxe'
 export function makeTile(kind, extra = {}) {
   const def = TILE_DEFS[kind];
   if (!def) throw new Error(`unknown tile kind: ${kind}`);
-  return { kind, hp: def.hp ?? 0, dig: 0, bars: 0, barHp: PORTAL.BAR_HP, open: false, broken: false, insideDir: 0, back: null, ...extra };
+  return { kind, hp: def.hp ?? 0, dig: 0, bars: 0, barHp: REINFORCE.HP, open: false, broken: false, insideDir: 0, back: null, ...extra };
 }
 
 // Called once, right after a placeable item builds its tile (placement.js). Overrides hp for
@@ -108,9 +114,19 @@ export function isSolid(t) {
   return d.solid;
 }
 
-// In the current world every solid blocks sight and every passable thing lets it through.
-// Kept as its own function because fences, bars and glass will split the two.
-export const isOpaque = isSolid;
+// Opaque no longer aliases solid (DESIGN §9, §5.4b) — glass is the first split: solid, but not
+// opaque, unless something makes it so. Reinforcement blocks light through *anything* it's
+// nailed to (a physical fact, not a glass-specific rule) — checked first, ahead of the def's
+// own answer, so a boarded window is opaque the same way a boarded (or just plain solid) wall
+// already is. A closed curtain is the other way a tile can be opaque despite its def.
+export function isOpaque(t) {
+  if (!t) return false;
+  if (t.kind === 'part') return isOpaque(t.anchor);
+  if (t.bars > 0) return true;
+  if (t.curtain === 'closed') return true;
+  const d = TILE_DEFS[t.kind];
+  return d.opaque ?? isSolid(t);
+}
 
 export function isClimbable(t) {
   if (!t) return false;
@@ -154,7 +170,7 @@ export function damageTile(t, dmg) {
   if (t.kind === 'part') return damageTile(t.anchor, dmg);
   if (t.bars > 0) {
     t.barHp -= dmg;
-    if (t.barHp <= 0) { t.bars--; t.barHp = PORTAL.BAR_HP; return 'barBroke'; }
+    if (t.barHp <= 0) { t.bars--; t.barHp = REINFORCE.HP; return 'barBroke'; }
     return 'bar';
   }
   const d = TILE_DEFS[t.kind];

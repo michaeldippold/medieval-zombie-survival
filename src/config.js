@@ -54,7 +54,10 @@ export const INVENTORY = { SLOTS: 20, COLS: 5, HOTBAR_SIZE: 5 };
 
 export const DROPS = { SIZE: 12, FRICTION: 6, PICKUP_PAD: 6, POP_VX: 60, POP_VY: -220 };
 
-export const PORTAL = { BAR_HP: 100, MAX_BARS: 2 };
+// The additive HP layer for anything reinforceable — a door's bars, a window's boards
+// (DESIGN §11.1). Same mechanism regardless of material; `reinforceLabel` on the tile def is
+// what changes the word in the menu.
+export const REINFORCE = { HP: 100, MAX: 2 };
 
 export const UI = { HOTBAR_POP: 0.18, HOTBAR_SLOT: 48, HOTBAR_GAP: 6, HINT_TIME: 1.6 };
 
@@ -65,6 +68,7 @@ export const COLORS = {
   wall: '#c9a978', wallEdge: 'rgba(0,0,0,0.18)', wallStone: '#9a9da3', wallStoneEdge: 'rgba(0,0,0,0.3)',
   plaster: '#e8d8b5', plasterStripe: 'rgba(0,0,0,0.05)', earthBack: '#4a3320',
   wood: '#8a5a30', woodDark: '#5a3d1e', frame: '#6b4a24', doorLeaf: '#a5703a', opening: '#8fc5f0', metal: '#b8bec6',
+  glass: '#cfe8f0', glassShine: 'rgba(255,255,255,0.6)',
   player: '#9aa0a8', playerHelm: '#6e757d', playerVisor: '#2b2f33', playerHurt: '#ff8a80', playerDead: '#5b6270',
   zombies: ['#4f9a3a', '#5aa843', '#478f35', '#63b04a'], zombieBrow: '#2f5a22', zombieEye: '#1d1f1e', corpse: '#6c7173', wound: '#7a1f1f',
   accent: '#f2b134', alert: '#e63946', fog: 'rgba(12,14,22,0.84)',

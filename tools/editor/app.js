@@ -30,14 +30,14 @@ const SEED_ASSETS = [
   { id: 'floor', label: 'Planks (floor)', category: 'block', w: 1, h: 1, seed: '#8a5a30' },
   { id: 'ladder', label: 'Ladder', category: 'block', w: 1, h: 1, seed: '#8a5a30' },
   { id: 'door', label: 'Door', category: 'block', w: 1, h: 1, seed: '#a5703a' },
-  { id: 'shutter', label: 'Shutter', category: 'block', w: 1, h: 1, seed: '#6b4a24' },
   { id: 'hatch', label: 'Trapdoor', category: 'block', w: 1, h: 1, seed: '#8a5a30' },
+  // a window is glass in a wall (DESIGN §5.4b) — a plain block, no separate "window" kind
+  { id: 'glass', label: 'Glass', category: 'block', w: 1, h: 1, seed: '#cfe8f0' },
   // background (DESIGN §5.7 kind ids, so these slot straight in when Phase 5 lands)
   { id: 'bg_plaster', label: 'Background: plaster', category: 'background', w: 1, h: 1, seed: '#e8d8b5' },
   { id: 'bg_earth', label: 'Background: earth', category: 'background', w: 1, h: 1, seed: '#4a3320' },
   { id: 'bg_plank', label: 'Background: plank', category: 'background', w: 1, h: 1, seed: null },
   { id: 'bg_stone', label: 'Background: stone', category: 'background', w: 1, h: 1, seed: null },
-  { id: 'bg_window', label: 'Background: window', category: 'background', w: 1, h: 1, seed: null },
   // furniture (DESIGN §5.8 — sizes as specced; blank so they're drawn intentionally)
   { id: 'chest', label: 'Chest', category: 'furniture', w: 1, h: 1, seed: null },
   { id: 'bed', label: 'Bed', category: 'furniture', w: 2, h: 1, seed: null },

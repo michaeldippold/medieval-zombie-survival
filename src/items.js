@@ -22,6 +22,9 @@ export const ITEMS = {
   plank:  { name: 'Planks', kind: 'material' },   // sawn from a log; what every structure recipe costs
   stone:  { name: 'Stone',  kind: 'material' },
   arrow:  { name: 'Arrows', kind: 'material' },
+  // Never placed directly (no make()) — applied to glass via the right-click menu, the same
+  // way a plank is spent to bar a door, not held-and-used like a tool (DESIGN §11.1).
+  curtain: { name: 'Curtain', kind: 'material' },
 
   dirt:       { name: 'Dirt',        kind: 'placeable', make: () => makeTile('dirt') },
   leaf:       { name: 'Leaves',      kind: 'placeable', make: () => makeTile('leaf') },
@@ -31,8 +34,9 @@ export const ITEMS = {
   wall_stone: { name: 'Stone Wall',  kind: 'placeable', make: () => makeTile('wall_stone') },
   ladder:     { name: 'Ladder',      kind: 'placeable', make: () => makeTile('ladder') },
   door:       { name: 'Door',        kind: 'placeable', make: dir => makeTile('door', { insideDir: dir }) },
-  shutter:    { name: 'Shutter',     kind: 'placeable', make: dir => makeTile('shutter', { insideDir: dir }) },
   hatch:      { name: 'Trapdoor',    kind: 'placeable', make: () => makeTile('hatch') },
+  // No recipe yet — sand + furnace is Phase 8; until then glass is only found (DESIGN §5.4b).
+  glass:      { name: 'Glass',       kind: 'placeable', make: () => makeTile('glass') },
 };
 
 // Slots 0..HOTBAR_SIZE-1 of a fresh inventory. Dirt/leaves/logs aren't here — they're dug or felled, not started with.
@@ -54,7 +58,7 @@ export const CRAFTS = [
   { id: 'wall_stone', label: 'Stone wall',   cost: { stone: 1 }, gives: { wall_stone: 1 } },
   { id: 'ladder',     label: 'Ladder',       cost: { plank: 1 }, gives: { ladder: 1 } },
   { id: 'door',       label: 'Door',         cost: { plank: 2 }, gives: { door: 1 } },
-  { id: 'shutter',    label: 'Shutter',      cost: { plank: 1 }, gives: { shutter: 1 } },
+  { id: 'curtain',    label: 'Curtain',      cost: { plank: 2 }, gives: { curtain: 1 } },
   { id: 'hatch',      label: 'Trapdoor',     cost: { plank: 2 }, gives: { hatch: 1 } },
   { id: 'arrows',     label: 'Arrows ×4',    cost: { plank: 1 }, gives: { arrow: 4 } },
 ];

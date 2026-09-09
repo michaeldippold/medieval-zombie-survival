@@ -1,5 +1,5 @@
 // Tile painters. One function per kind, plus shared decorations (bars, cracks, splinters).
-import { TILE as T, COLORS, PORTAL } from '../config.js';
+import { TILE as T, COLORS, REINFORCE } from '../config.js';
 import { integrity, TILE_DEFS } from '../world/tiles.js';
 import { spriteFor } from './assets.js';
 
@@ -99,20 +99,25 @@ const PAINTERS = {
     }
     paintBars(ctx, x, y, t, H);
   },
-  shutter(ctx, x, y, t, c, r, hTiles = 1, baseY = y) {
-    const H = T * hTiles;
-    ctx.fillStyle = COLORS.frame; ctx.fillRect(x, y, T, H);
-    if (t.broken) { ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 4, y + 4, T - 8, H - 8); paintSplinters(ctx, x + 2, baseY + 2); }
-    else if (t.open) {
-      ctx.fillStyle = COLORS.opening; ctx.fillRect(x + 4, y + 4, T - 8, H - 8);
-      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x - 6, y + 2, 8, H - 4); ctx.fillRect(x + T - 2, y + 2, 8, H - 4);   // panels swung wide
-    } else {
-      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 4, y + 4, T - 8, H - 8);
-      ctx.fillStyle = COLORS.frame; ctx.fillRect(x + T / 2 - 1, y + 4, 2, H - 8);
-      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x + 4, y + H * 0.38, T - 8, 2); ctx.fillRect(x + 4, y + H * 0.76, T - 8, 2);
-      paintCracks(ctx, x, baseY, integrity(t));
+  // A window is glass with two independent, layered decorations (DESIGN §11.1): `curtain`
+  // (state) and `bars` (reinforcement, "boards" in the menu). Either, both, or neither.
+  glass(ctx, x, y, t) {
+    ctx.fillStyle = COLORS.frame; ctx.fillRect(x, y, T, T);
+    ctx.fillStyle = COLORS.glass; ctx.fillRect(x + 3, y + 3, T - 6, T - 6);
+    ctx.strokeStyle = COLORS.glassShine; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x + 6, y + T - 8); ctx.lineTo(x + T - 10, y + 8); ctx.stroke();
+    if (t.curtain === 'closed') {
+      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 3, y + 3, T - 6, T - 6);
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) { const lx = x + 3 + (i * (T - 6)) / 4; ctx.beginPath(); ctx.moveTo(lx, y + 3); ctx.lineTo(lx, y + T - 3); ctx.stroke(); }
+    } else if (t.curtain === 'open') {
+      ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(x + 3, y + 3, 7, T - 6);   // bunched to one side
     }
-    paintBars(ctx, x, y, t, H);
+    if (t.bars > 0) {
+      ctx.strokeStyle = COLORS.woodDark; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x + 2, y + 2); ctx.lineTo(x + T - 2, y + T - 6); ctx.moveTo(x + 2, y + T - 6); ctx.lineTo(x + T - 2, y + 2); ctx.stroke();
+    }
+    paintCracks(ctx, x, y, integrity(t));
   },
   hatch(ctx, x, y, t) {
     paintLadder(ctx, x, y);                              // the ladder continues through the hatch
@@ -132,15 +137,15 @@ function paintLadder(ctx, x, y) {
   ctx.fillStyle = COLORS.frame; ctx.fillRect(x + 10, y, 4, T); ctx.fillRect(x + 26, y, 4, T);
   for (let yy = y + 6; yy < y + T; yy += 12) ctx.fillRect(x + 10, yy, 20, 3);
 }
-// `H` is the full drawn height (a multi-cell door/shutter passes its whole footprint's height;
+// `H` is the full drawn height (a multi-cell door passes its whole footprint's height;
 // everything else defaults to one tile) — bars space themselves out across whatever that is.
 function paintBars(ctx, x, y, t, H = T) {
   for (let i = 0; i < t.bars; i++) {
-    const by = y + (H * (i + 1)) / (PORTAL.MAX_BARS + 1) - 4;
+    const by = y + (H * (i + 1)) / (REINFORCE.MAX + 1) - 4;
     ctx.fillStyle = COLORS.woodDark; ctx.fillRect(x - 4, by, T + 8, 9);
     ctx.fillStyle = '#3a3f41'; ctx.fillRect(x - 2, by + 3, 3, 3); ctx.fillRect(x + T - 1, by + 3, 3, 3);
   }
-  if (t.bars > 0 && t.barHp < PORTAL.BAR_HP) paintCracks(ctx, x, y, t.barHp / PORTAL.BAR_HP);
+  if (t.bars > 0 && t.barHp < REINFORCE.HP) paintCracks(ctx, x, y, t.barHp / REINFORCE.HP);
 }
 export function paintCracks(ctx, x, y, ratio) {
   if (!(ratio < 0.99)) return;

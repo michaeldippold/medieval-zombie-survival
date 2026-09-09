@@ -260,7 +260,7 @@ still one function.
       fine (§ analysis says so) but not played
 - [ ] `docs/ADDING.md` still doesn't exist (carried over from 2c, not new here)
 
-## Phase 3b — Body width, glass, curtains, boards (DESIGN §6.1, §5.4b, §11.1)
+## Phase 3b — Body width, glass, curtains, boards ✅ 2026-09-09 (DESIGN §6.1, §5.4b, §11.1)
 
 Two follow-ups from playing the scale change: bodies looked like cigarettes, and a shutter
 turned out to be a door with different art. A third fell out of the conversation: bars and a
@@ -270,44 +270,44 @@ a data row instead of another round of this.
 
 - [x] Bodies 24/26 → **28** wide (both). Verified by dropping through the house hatch and a
       dug 1-wide shaft; Phase 3 checks re-passed
-- [ ] **Delete the shutter**: tile def, item, recipe, painter, `climbThrough` flag (dead once
-      shutter is gone — nothing else sets it), the house's three shutters, the under-canvas
-      help text, the editor's seed asset
-- [ ] `isOpaque` stops aliasing `isSolid`: `t.bars > 0` → opaque (reinforcement blocks light
-      through anything, no glass-specific case needed); else `t.curtain === 'closed'` → opaque;
-      else `def.opaque ?? isSolid(t)`. A `part` cell redirects to its anchor, same as `isSolid`.
-      Vision itself is untouched
-- [ ] `glass` tile: `solid: true, opaque: false`, hp 40, `harvest: { tool: 'pick', hits: 1,
-      drop: 'glass' }`, `reinforceLabel: 'Board'`. **No footprint** — unlike a door, a "2-tall
-      window" is just two glass tiles the player stacked, each independently solid/hp/curtain;
-      no anchor/part needed. Placeable item `glass`, no recipe yet (found in the prefab only,
-      until sand + furnace in Phase 8). Painter: a pale, see-through-looking pane
-- [ ] `curtain` item (`kind: 'material'`, 2 plank) — no `make()`, never placed directly, only
-      ever applied via the menu (below)
-- [ ] `menuItemsForTile`: pull the door/hatch bar logic out into a shared reinforcement-menu
-      helper, gated on `defOf(t).reinforceable` (true for doors/hatches — existing — and now
-      `glass`) rather than `isPortal(t)` alone, so it fires for a non-portal tile too. Costs
-      1 plank, never refunded, label from `defOf(t).reinforceLabel` ("Bar" / "Board")
-- [ ] A parallel curtain-menu helper, gated on `defOf(t).curtainable` (glass only for now):
-      no curtain yet → **Hang curtain** (needs 1 anywhere in inventory, not held); curtain
-      present → **Open curtain** / **Close curtain** / **Take down curtain** (returns the item).
-      Toggling open/closed walks contiguous curtained cells vertically (up and down from the
-      clicked one) and flips them together — DESIGN's "one click, the whole window"
-- [ ] Dismantling glass: drops `glass`, and separately `curtain` if `t.curtain` is set (via
-      `give()`, same call site, not fused into one item). A boarded pane drops only `glass` —
-      the boards never come back, matching bars
-- [ ] Bars cost a plank and are spent on dismantle, not refunded (DESIGN §11.1) — was free
-      before this pass
-- [ ] House prefab: the three shutters (ground-floor left, loft left, loft right) become
-      glass — ground floor and one loft window 2-tall (two stacked panes), the other loft
-      window 1-tall at head height, so a broken pane's height-is-risk is there to discover.
-      All start **curtained closed** so the house is sealed by default, same as today
-- [ ] Node checks: sight passes through glass, stops at a closed curtain and separately at a
-      boarded one; a body is blocked by glass; dismantling curtained glass drops both items,
-      not one; dismantling boarded glass drops only glass; a broken 1-tall pane doesn't admit
-      a body, a broken 2-tall one does
-- [ ] Editor seeds: remove `shutter`; add `glass`, `curtain`
-- [ ] Played: seal the house by closing curtains; watch a zombie come through a broken window
+- [x] **Shutter deleted**: tile def, item, recipe, painter, `climbThrough` (the whole branch —
+      dead with nothing left to set it), the house's three shutters, the under-canvas help
+      text, the editor's seed asset. `grep -ri shutter src/` now finds nothing
+- [x] `isOpaque` stops aliasing `isSolid`: `t.bars > 0` → opaque, else `t.curtain === 'closed'`
+      → opaque, else `def.opaque ?? isSolid(t)`; a `part` redirects to its anchor. Vision itself
+      untouched — confirmed by the same 22 Phase 3 door checks still passing unchanged
+- [x] `glass` tile: `solid: true, opaque: false`, hp 40, pick ×1 → `glass`, `reinforceLabel:
+      'Board'`, `curtainable: true`. No footprint — a "2-tall window" is two independent glass
+      tiles the player stacked. Placeable item, no recipe yet (found only, until Phase 8's
+      furnace). Painter: pale pane with a highlight streak; curtain and boards layer on top
+- [x] `curtain` item (`material`, 2 plank via `CRAFTS`) — no `make()`, applied only through
+      the menu
+- [x] `menuItemsForTile`: `pushReinforcementItems` extracted from the old portal-only bar
+      logic, gated on `defOf(t).reinforceLabel` so it fires for glass too, not just portals;
+      costs a plank, never refunded (bars finally cost one, same as boards — was free before
+      this pass). `pushCurtainItems` gated on `defOf(t).curtainable`: Hang / Open / Close /
+      Take down, checking inventory contents rather than the held item. Toggling walks
+      `curtainRun()` — every contiguous curtained cell vertically — so one click works the
+      whole window, confirmed live: opening the ground-floor pane's curtain exposed the house,
+      closing it re-sealed, and both stacked panes flipped together with no anchor/part needed
+- [x] Dismantling: `tools.js` reads whether the anchor was curtainable+curtained *before*
+      removal and, if so, spawns a `curtain` drop alongside the block's own — confirmed live
+      (2 planks → hung curtain → boarded with a 3rd plank → both cost taken correctly) and in
+      Node (curtained glass drops both items; boarded glass drops only glass)
+- [x] House prefab: door unchanged (2-tall, only portal in the house); the three former
+      shutters are now glass — ground floor and one loft window 2-tall, the other loft window
+      1-tall at head height; all start **curtained closed**, confirmed live (`sealed` on load,
+      identical to before glass existed)
+- [x] Node: 36 checks total (22 carried over from Phase 3, 14 new) — sight through bare glass
+      and blocked by a closed curtain or `bars>0`; a curtain absorbs no damage; the menu's
+      exact wording and disabled reasons; separate-vs-fused drops; a broken 1-tall pane
+      blocking a two-tall body while a broken 2-tall stack admits it (caught and fixed a
+      vertical-alignment bug in the test itself here, not the game, before it passed)
+- [x] Editor seeds: `shutter` removed, `glass` added (block, 1×1); `bg_window` also dropped
+      from the background list, since glass is the window now, not a background wall
+- [x] Played: opened and closed the real house's curtain through the actual right-click menu
+      (not a mock), boarded a pane with a real plank, watched sealed ↔ exposed flip correctly,
+      zero console errors across the session
 
 ## Phase 4 — Editor and asset pipeline (DESIGN §16) — parallel track ✅ 2026-09-08
 

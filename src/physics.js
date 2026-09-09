@@ -53,7 +53,7 @@ export function onClimbable(world, b) {
 // One-tile step: a blocked body whose obstacle is exactly one tile tall is lifted onto it, as
 // long as the body actually fits there once it's two tiles tall itself (DESIGN §6.1) — not just
 // the one row above the obstacle, but every row the body's own height now spans. Bodies are
-// narrower than a tile, so x-motion then carries them through. Sills, open shutters, ladder tops.
+// narrower than a tile, so x-motion then carries them through. Sills, open doors, ladder tops.
 export function tryClimb(world, b) {
   const c = world.colOf(b.vx > 0 ? b.x + b.w + 2 : b.x - 2);
   const rFoot = world.rowOf(b.y + b.h - 1);          // the row at the body's current feet

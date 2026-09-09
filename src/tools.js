@@ -26,13 +26,14 @@ export function updateTools(state, dt) {
 
   const res = harvestTile(t, item.tool);
   if (res.wrongTool) { showHint(state, `needs ${TOOL_NAMES[res.wrongTool]}`); return; }
+  const anchor = t.kind === 'part' ? t.anchor : t;
+  const hadCurtain = defOf(anchor).curtainable && !!anchor.curtain;   // read before the tile is gone
   if (res.removed) {
     // A multi-cell tile (a 2-tall door, DESIGN §5.8) is dismantled whole: clear every cell of
     // its footprint, not just the one the player is aiming at, so no `part` is left orphaned
     // pointing at an anchor that no longer exists.
     // Only something `stampMulti` placed has a footprint to walk; an ordinary block (dirt,
     // a leaf, a wall) has no `footAt` and is just the one cell under the cursor.
-    const anchor = t.kind === 'part' ? t.anchor : t;
     const cells = anchor.footAt ? footprintCells(anchor) : [[c, r]];
     for (const [cc, rr] of cells) world.set(cc, rr, airAfter(anchor, world.isUnderground(cc, rr)));
   } else world.touch();
@@ -42,6 +43,10 @@ export function updateTools(state, dt) {
     const pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
     const [sx, sy] = res.removed ? [c * TILE + TILE / 2, r * TILE + TILE / 2] : freeSpotNear(world, c, r, pcx, pcy);
     spawnDrop(state, sx, sy, res.drop, 1, Math.sign(pcx - sx) * 50);
+    // A curtain is state, not reinforcement (DESIGN §11.1): it comes back on dismantle,
+    // separately, the same way a door's own state never changes what it drops. Reinforcement
+    // (bars/boards) never does this — that's the whole difference between the two.
+    if (res.removed && hadCurtain) spawnDrop(state, sx, sy, 'curtain', 1, Math.sign(pcx - sx) * 50);
   }
 }
 

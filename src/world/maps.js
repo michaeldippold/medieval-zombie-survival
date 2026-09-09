@@ -26,8 +26,8 @@ export function buildStarterMap() {
 
   // ---- the house: outer walls c0..c1, roof r0, ground floor on the surface. Interior is 9
   // rows (was 7 before two-tall bodies, DESIGN §6.1): 4 for the ground floor, 1 for the loft
-  // floor, 4 for the loft, so a door/shutter's extra row (they're 2 tall now — see below) still
-  // leaves headroom rather than eating the whole room. Same overall roofline height as before
+  // floor, 4 for the loft, so the door's extra row (it's 2 tall now — see below) still leaves
+  // headroom rather than eating the whole room. Same overall roofline height as before
   // (10 rows at 32px == 8 rows at the old 40px), just more rows to spend it with.
   const c0 = 60, c1 = 72, r1 = S - 1, r0 = r1 - 9;
   const LADDER_COL = c1 - 2, LOFT_ROW = r0 + 5;
@@ -37,13 +37,19 @@ export function buildStarterMap() {
   for (let c = c0 + 1; c < c1; c++) if (c !== LADDER_COL) world.set(c, LOFT_ROW, makeTile('floor', { back: 'plaster' }));
   for (let r = LOFT_ROW - 2; r <= r1; r++) world.set(LADDER_COL, r, makeTile('ladder', { back: 'plaster' }));
   world.set(LADDER_COL, LOFT_ROW, makeTile('hatch', { open: true, back: 'plaster' }));
-  // Door and shutters are 2-tall (anchor at the row named here, its `part` directly above —
-  // DESIGN §5.8): the door on the ground-floor left wall, a matching window on the right so the
-  // room isn't dark, and one window per wall up in the loft.
+  // The door is 2-tall (anchor at the row named here, its `part` directly above — DESIGN
+  // §5.8): the only portal in the house. Windows are glass (§5.4b) — no footprint, just tiles
+  // the way any other block is; a "2-tall window" is two of them stacked. One two-tall pane
+  // opposite the door so the ground floor isn't dark, one two-tall pane in the loft, and one
+  // *one-tall* pane at head height so a broken pane's height-is-risk (§5.4b) is discoverable
+  // day one. All start curtained closed, so the house is sealed by default, same as before
+  // glass existed.
   stampMulti(world, c0, r1, makeTile('door', { insideDir: 1 }));
-  stampMulti(world, c1, r1, makeTile('shutter', { insideDir: -1 }));
-  stampMulti(world, c0, r0 + 3, makeTile('shutter', { insideDir: 1 }));
-  stampMulti(world, c1, r0 + 3, makeTile('shutter', { insideDir: -1 }));
+  world.set(c1, r1, makeTile('glass', { curtain: 'closed' }));
+  world.set(c1, r1 - 1, makeTile('glass', { curtain: 'closed' }));
+  world.set(c0, r0 + 3, makeTile('glass', { curtain: 'closed' }));
+  world.set(c0, r0 + 2, makeTile('glass', { curtain: 'closed' }));
+  world.set(c1, r0 + 3, makeTile('glass', { curtain: 'closed' }));
 
   const spawnCol = 10;
   const reserved = c => (c >= c0 - 3 && c <= c1 + 3) || Math.abs(c - spawnCol) < 4;

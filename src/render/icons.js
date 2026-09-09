@@ -13,6 +13,16 @@ export function paintItemIcon(ctx, id) {
     case 'plank':
       for (let i = 0; i < 3; i++) { ctx.fillStyle = COLORS.doorLeaf; ctx.fillRect(4, 6 + i * 11, 32, 9); ctx.fillStyle = COLORS.frame; ctx.fillRect(4, 13 + i * 11, 32, 2); }
       break;
+    case 'curtain':
+      ctx.fillStyle = COLORS.frame; ctx.fillRect(TILE * 0.15, TILE * 0.12, TILE * 0.7, TILE * 0.06);
+      ctx.fillStyle = COLORS.doorLeaf;
+      ctx.beginPath();
+      ctx.moveTo(TILE * 0.2, TILE * 0.18);
+      ctx.quadraticCurveTo(TILE * 0.3, TILE * 0.5, TILE * 0.22, TILE * 0.85);
+      ctx.lineTo(TILE * 0.55, TILE * 0.85);
+      ctx.quadraticCurveTo(TILE * 0.48, TILE * 0.5, TILE * 0.6, TILE * 0.18);
+      ctx.closePath(); ctx.fill();
+      break;
     case 'arrow':
       for (const off of [-6, 6]) {
         ctx.save(); ctx.translate(20 + off, 20 - off); ctx.rotate(-Math.PI / 4);
