@@ -203,7 +203,7 @@ natural tile is a raw material; on a built tile it is the tile's own item id (§
 | `floor` (planks) | yes | yes | 120 | axe ×2 → floor | structure, placeable, 1 plank |
 | `ladder` | no | no | 40 | axe ×1 → ladder | structure, climbable; placeable, 1 plank |
 | `door` | state | state | 150 | axe ×3 → door | structure/portal, bars from inside; 2 plank; 2 tall |
-| `glass` | **yes** | **no** / curtain | 40 | pick ×1 → glass, or glass_curtained | structure; solid, see-through; curtain closed = opaque (§5.4b); from a furnace (sand) or found |
+| `glass` | **yes** | **no** / curtain / bars | 40 | pick ×1 → glass (+ curtain, if any) | structure; solid, see-through; curtain closed or boarded (`bars>0`) = opaque (§5.4b, §11.1); from a furnace (sand) or found |
 | `hatch` | state | state | 120 | axe ×3 → hatch | structure/portal in a floor, bars from above; 2 plank |
 
 *(`shutter` removed 2026-09-08 — it was a door with different art. See §3 and §5.4b.)*
@@ -299,15 +299,28 @@ falls out, with no rules beyond that one:
 - **Made or found.** Sand → furnace → glass (Phase 8, §5.8); until then glass is found in
   prefabs, which carry it from the start. Sand is what a desert biome is *for* (§5.6).
 
-**A curtain is state on a glass block**, not a tile — the way bars are state on a door. Hold a
-curtain item, right-click glass: the item is consumed and the block is now curtained, with an
-open/closed state. **Closed means opaque**: the flood-fill stops there, the house seals, you
-can sleep. Open means see-through again. Toggling one curtained block toggles every curtained
-glass block touching it vertically, so one click works the whole window. Curtain every pane of
-an all-glass house or don't — uncurtained glass is sight, and sight is exposure. That is the
-whole game in one block. No size question ever comes up because there is no curtain object
-with a size. Dismantling curtained glass drops one **curtained glass** item, not two — it is
-a changed block, not a stack (§11, attachments).
+**A curtain is state on a glass block** (§11.1 — a *state attachment*), not a tile of its own
+and not a fused new block. Right-click glass: if you're carrying one anywhere in your pack,
+"Hang curtain" appears in the menu, exactly the way "Bar door" already does — no need to have
+it selected, matching bars and crafting rather than inventing a third interaction model. Once
+hung, the menu offers **Open curtain** / **Close curtain** / **Take down curtain**. **Closed
+means opaque**: the flood-fill stops there, the house seals, you can sleep. Toggling one
+curtained block toggles every curtained glass block touching it vertically, so one click works
+the whole window. Curtain every pane of an all-glass house or don't — uncurtained glass is
+sight, and sight is exposure. That is the whole game in one block, and no size question ever
+comes up because there is no curtain object with a size.
+
+Dismantling curtained glass drops **`glass` and `curtain` as two separate items**, not one
+fused "curtained glass" (reversed 2026-09-08 — see §11.1 for why: a door's open/closed/broken
+state never changes what it drops, either, so curtain shouldn't). A closed curtain absorbs no
+damage; a zombie that breaks the glass takes the curtain down with it — the house was sealed
+right up until the window everyone was counting on gave out.
+
+**Boards are the other kind of covering** — not a state, *reinforcement* (§11.1), the same
+mechanism as a door's bars, generalised to a second tile. "Board window" costs a plank and
+raises `bars` exactly like barring a door; boarded glass is opaque too, but as a side effect
+of reinforcement blocking light through anything, not because the tile changed identity. A
+boarded window never comes back as an item, curtained or not, the same as a bar never has.
 
 *Why not a shutter or a curtain tile:* a shutter was a door with different art. A curtain
 *tile* has to be as tall as the window it covers, which made "how tall is a window" a rule
@@ -407,7 +420,7 @@ Nothing in the runtime may assume a particular layout.
   the first is what makes the choice a choice. Needs (§7.4) push you between biomes over time —
   food runs out where you are — but they can't be the only reason to go somewhere.
 - **Prefabs are built in the game, not painted** (decided 2026-09-08). In creative mode
-  (§11.1) you build a hut out of real tiles, walk around in it, then drag a rectangle and
+  (§11.2) you build a hut out of real tiles, walk around in it, then drag a rectangle and
   export. The exporter walks both grids and writes:
 
   ```json
@@ -791,7 +804,8 @@ fill reaches the top row, the player is **exposed**; otherwise **sealed**.
 **Opaque is no longer solid** (2026-09-08). Glass is solid and see-through; a closed curtain
 on it is solid and opaque; a decoration that blocks sight but not bodies is possible later
 (a hung banner, a hedge). `isOpaque` reads a def's `opaque` field (default: same as `solid`)
-plus per-tile state (`curtain === 'closed'`). Nothing in the fill changed.
+plus per-tile state — `curtain === 'closed'`, or `bars > 0` (reinforcement blocks light through
+anything it's nailed to, §11.1). Nothing in the fill changed.
 
 Consequences, all of which are intentional and none of which required extra code:
 - A curtained house is dark outside and lit inside. Open one curtain and the whole outside
@@ -838,15 +852,37 @@ Wounds are drawn as notches so remaining HP is readable without a bar.
 
 - **Materials**: dirt, timber (from trees), stone, iron (from ore + a furnace). Each is a
   wall/floor/door tier with rising HP: timber 300 / stone 900 / iron-banded 2000.
+### 11.1 Two kinds of "add something to a block" (settled 2026-09-08)
+
+A door's bars and a glass block's curtain both start the same way — a right-click menu action
+that consumes an item and changes a tile's behaviour. They turned out to be two genuinely
+different mechanisms, caught by asking what a *boarded door* should drop (nobody wants "door
+with three boards" as an item), which is the same question a curtain has to answer honestly.
+
+**Reinforcement** — bars (doors, hatches) and **boards** (glass, generalising the same
+mechanism to a second tile): an additive HP layer, `bars`/`barHp` on the tile, that absorbs
+damage before the tile's own hp does. It does not change what the tile *is* — a barred door
+is still a door in every menu, every predicate, every dismantle. It **can** still affect a
+predicate as a physical side effect: `isOpaque` is true for any tile with `bars > 0`,
+reinforcement-blocks-light being just as true of a boarded window as a closed curtain, with
+no special case needed for glass specifically. One plank per point, and it is always a
+**sunk cost** — never returned, whether a zombie smashes it or the player deliberately
+removes it. Bars already didn't refund a plank before this was written down; boards inherit
+that, on purpose, for the same reason Zomboid's barricades don't give the wood back.
+
+**State** — a curtain (glass), and open/closed/broken (already true of every portal). A named
+mode the tile switches between, that changes behaviour while it holds (closed curtain =
+opaque) but never changes *what item a dismantle drops* — a broken door still drops "door";
+curtained glass still drops "glass" (plus the curtain, separately, since unlike a bar a
+curtain is something you can just take back down). Applying or removing state is a menu
+action too, gated on having the item somewhere in your pack, not on holding it.
+
+The rule that tells them apart: **reinforcement is spent; state is reversible.** A future
+lock or torch bracket is one or the other, not a third thing — ask whether taking it off
+should ever hand the item back.
+
 - **Bars** are the universal reinforcement (+100 HP each, max 2, inside only). One plank each,
   and spent: they're nailed on. Tear the door down and the planks are gone.
-- **Attachments** (rule, 2026-09-08): a curtain on glass — later a lock, a torch bracket, iron
-  banding — is an item consumed onto a block that **changes what the block is**. It becomes
-  state on that block, not a second thing in the cell and not a new tile kind. The tell is
-  what drops when you dismantle it: **one item, for the block as it now is** — "curtained
-  glass", not glass plus a curtain. Two separate items would say "stacked"; one says
-  "changed", which is the truth. So every attachment that survives dismantling has an item id
-  of its own (`glass_curtained`), placeable, which places the block already changed.
 - **Repair**: hammer on a damaged tile restores HP at a material cost.
 - **Stations** (§5.8): workbench (wood and stone goods), furnace (smelting), fireplace
   (cooking). Recipes are data; `station` on a recipe gates it.
@@ -856,7 +892,7 @@ Wounds are drawn as notches so remaining HP is readable without a bar.
 - **The loop**: gather outside (exposed) → craft inside (sealed) → build (changes enclosure)
   → furnish (changes nothing but you).
 
-### 11.1 Creative mode (planned, early)
+### 11.2 Creative mode (planned, early)
 
 A flag on the state, `state.creative`: no zombies spawn and existing ones are cleared,
 placing never consumes stock, harvesting is instant, the needs clock is off, a key toggles
@@ -1067,7 +1103,7 @@ editor + asset pipeline (§16) ── parallel track; art starts landing while s
 entity registry (2c)  ─┬─► animals ──► food ──► needs ──► moodles
                        └─► NPCs (post-1.0), zombie variants (post-1.0)
 background layer (§5.7) ─┬─► torches ──► day/night + lighting (§12.1) ──► day counter = score
-                         └─► creative mode + prefab export/stamp (§11.1, §5.6) ── early, so
+                         └─► creative mode + prefab export/stamp (§11.2, §5.6) ── early, so
                              buildings get made while systems are built
 stateful tiles (§5.8)  ─┬─► chest (two-grid panel) ──► prefab loot
                        ├─► bed ──► sleep/fatigue
@@ -1103,8 +1139,10 @@ tables and `(state, dt)` functions in the update order.
 
 - **Exposed / sealed** — the enclosure boolean (§9).
 - **Portal** — a door or trapdoor: a tile with open/closed/broken + bars.
-- **Attachment** — an item consumed onto a block that changes what the block is, dropping as
-  one changed item: a curtain on glass (§11). Bars are spent, not attached.
+- **Reinforcement** — bars/boards: an additive HP layer that never changes what a tile is and
+  is never returned, whether broken or removed (§11.1).
+- **State (attachment)** — a curtain, or open/closed/broken: a named mode a tile switches
+  between that changes behaviour without changing what a dismantle drops (§11.1).
 - **Glass / curtain** — the solid-but-see-through block, and the state that makes it opaque (§5.4b).
 - **Attention** — the shared "someone saw the player here" point (§8.2).
 - **Step climb** — the one-tile mount rule (§6).

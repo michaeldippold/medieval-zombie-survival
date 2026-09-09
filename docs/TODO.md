@@ -260,34 +260,54 @@ still one function.
       fine (§ analysis says so) but not played
 - [ ] `docs/ADDING.md` still doesn't exist (carried over from 2c, not new here)
 
-## Phase 3b — Body width, glass, curtains (DESIGN §6.1, §5.4b, §11)
+## Phase 3b — Body width, glass, curtains, boards (DESIGN §6.1, §5.4b, §11.1)
 
 Two follow-ups from playing the scale change: bodies looked like cigarettes, and a shutter
-turned out to be a door with different art.
+turned out to be a door with different art. A third fell out of the conversation: bars and a
+curtain look like the same "attach an item to a block" idea but aren't, and getting that split
+right now (reinforcement vs. state, §11.1) means the *next* one — a lock, a torch bracket — is
+a data row instead of another round of this.
 
-- [ ] Bodies 24/26 → **28** wide (both). One-wide shafts stay, so 28 is the ceiling. Verify
-      by dropping through the house hatch and a dug 1-wide shaft; re-run the Phase 3 checks
-- [ ] **Delete the shutter**: tile def, item, recipe, painter, `climbThrough` flag, the house's
-      three shutters, the under-canvas help text, the editor's seed asset
-- [ ] `isOpaque` stops aliasing `isSolid`: reads `def.opaque ?? def.solid`, then per-tile
-      state (`t.curtain === 'closed'`). Vision is otherwise untouched
-- [ ] `glass` tile: `solid: true, opaque: false`, hp 40, `harvest: pick ×1`, drops `glass` —
-      or `glass_curtained` if it carries a curtain. Placeable item `glass`; painter (pale,
-      see-through-looking, with a visible pane edge). Not craftable until the furnace (Phase 8):
-      found in the house prefab only, for now
-- [ ] `curtain` item (2 plank): right-click glass with it held → consumed, `t.curtain =
-      'closed'`. Right-click curtained glass → Open/Close, toggling every curtained glass
-      block touching it vertically. `glass_curtained` placeable item (places glass with
-      `curtain: 'open'`). Painter draws the curtain over the pane when closed
-- [ ] Bars cost a plank and are spent on dismantle (DESIGN §5.4)
-- [ ] House prefab: the ground-floor window opposite the door becomes 2-tall glass; one loft
-      window 2-tall glass, the other **1-tall at head height** so height-is-risk is visible
-      on day one; curtains on the ground-floor one so the house can still be sealed
-- [ ] Node checks: sight passes through glass and stops at a closed curtain; a body is blocked
-      by glass; a broken 1-tall pane doesn't admit a body, a broken 2-tall one does; curtained
-      glass drops one `glass_curtained`
-- [ ] Editor seeds: remove `shutter`; add `glass`, `glass_curtained`, `curtain`
-- [ ] Played: seal the house by closing curtains; watch a zombie come through the window
+- [x] Bodies 24/26 → **28** wide (both). Verified by dropping through the house hatch and a
+      dug 1-wide shaft; Phase 3 checks re-passed
+- [ ] **Delete the shutter**: tile def, item, recipe, painter, `climbThrough` flag (dead once
+      shutter is gone — nothing else sets it), the house's three shutters, the under-canvas
+      help text, the editor's seed asset
+- [ ] `isOpaque` stops aliasing `isSolid`: `t.bars > 0` → opaque (reinforcement blocks light
+      through anything, no glass-specific case needed); else `t.curtain === 'closed'` → opaque;
+      else `def.opaque ?? isSolid(t)`. A `part` cell redirects to its anchor, same as `isSolid`.
+      Vision itself is untouched
+- [ ] `glass` tile: `solid: true, opaque: false`, hp 40, `harvest: { tool: 'pick', hits: 1,
+      drop: 'glass' }`, `reinforceLabel: 'Board'`. **No footprint** — unlike a door, a "2-tall
+      window" is just two glass tiles the player stacked, each independently solid/hp/curtain;
+      no anchor/part needed. Placeable item `glass`, no recipe yet (found in the prefab only,
+      until sand + furnace in Phase 8). Painter: a pale, see-through-looking pane
+- [ ] `curtain` item (`kind: 'material'`, 2 plank) — no `make()`, never placed directly, only
+      ever applied via the menu (below)
+- [ ] `menuItemsForTile`: pull the door/hatch bar logic out into a shared reinforcement-menu
+      helper, gated on `defOf(t).reinforceable` (true for doors/hatches — existing — and now
+      `glass`) rather than `isPortal(t)` alone, so it fires for a non-portal tile too. Costs
+      1 plank, never refunded, label from `defOf(t).reinforceLabel` ("Bar" / "Board")
+- [ ] A parallel curtain-menu helper, gated on `defOf(t).curtainable` (glass only for now):
+      no curtain yet → **Hang curtain** (needs 1 anywhere in inventory, not held); curtain
+      present → **Open curtain** / **Close curtain** / **Take down curtain** (returns the item).
+      Toggling open/closed walks contiguous curtained cells vertically (up and down from the
+      clicked one) and flips them together — DESIGN's "one click, the whole window"
+- [ ] Dismantling glass: drops `glass`, and separately `curtain` if `t.curtain` is set (via
+      `give()`, same call site, not fused into one item). A boarded pane drops only `glass` —
+      the boards never come back, matching bars
+- [ ] Bars cost a plank and are spent on dismantle, not refunded (DESIGN §11.1) — was free
+      before this pass
+- [ ] House prefab: the three shutters (ground-floor left, loft left, loft right) become
+      glass — ground floor and one loft window 2-tall (two stacked panes), the other loft
+      window 1-tall at head height, so a broken pane's height-is-risk is there to discover.
+      All start **curtained closed** so the house is sealed by default, same as today
+- [ ] Node checks: sight passes through glass, stops at a closed curtain and separately at a
+      boarded one; a body is blocked by glass; dismantling curtained glass drops both items,
+      not one; dismantling boarded glass drops only glass; a broken 1-tall pane doesn't admit
+      a body, a broken 2-tall one does
+- [ ] Editor seeds: remove `shutter`; add `glass`, `curtain`
+- [ ] Played: seal the house by closing curtains; watch a zombie come through a broken window
 
 ## Phase 4 — Editor and asset pipeline (DESIGN §16) — parallel track ✅ 2026-09-08
 
@@ -341,7 +361,7 @@ Two grids, one thing of each per cell — no mount grid.
       non-solid decoration
 - [ ] Played: re-wall the house interior in plank, hang a painting, take it all down again
 
-## Phase 6 — Creative mode and prefabs (DESIGN §11.1, §5.6)
+## Phase 6 — Creative mode and prefabs (DESIGN §11.2, §5.6)
 
 Early on purpose: testing without dying, and buildings get made while systems are built.
 
@@ -598,3 +618,6 @@ unarmed body + the existing aim-at-mouse weapon overlay.
 - 2026-09-08 — **"Low fantasy" means real headroom, not a decorative label.** A goblin, a magic staff, a cursed blade are not ruled out by the setting later — the label already said this, it was just never spelled out. Not scheduling any of it now.
 - 2026-09-08 — **Spear and crossbow promoted from backlog to Phase 11**, so sword+bow was never meant to be the entire weapon roster forever, only the starting one. Distinct lines (reach/arc for the spear, rate-of-fire/damage/load for the crossbow), not reskins, each tiering the same wood→stone→iron way.
 - 2026-09-08 — **28×60 bodies and one-wide vertical shafts confirmed correct by an actual extended play session** (Michael) — closes Phase 3's playtest gap. Verdict: proceed with features, not more scale changes.
+- 2026-09-09 — **Reinforcement and state are two different mechanisms, not one "attachment" pattern** (supersedes the 2026-09-08 "curtain is state on a glass block" entry's drop rule — DESIGN §11.1). Caught by asking what a *boarded door* should drop: nobody wants "door with three boards" as an item, and that's the same question a curtain has to answer. **Reinforcement** (bars, and boards — the same mechanism generalized to glass): additive HP, never changes what the tile is, never returned whether broken or removed, and can still affect a predicate as a side effect (`bars > 0` makes any tile opaque — boarding a window blocks light because boards are opaque, not because the tile changed kind). **State** (curtain; open/closed/broken, already true of doors): a named mode that changes behaviour but never what a dismantle drops — curtained glass drops `glass` and `curtain` separately, the same way a broken door still just drops "door". The tell for a future attachment: does taking it off ever hand the item back? If yes, it's state; if no, it's reinforcement.
+- 2026-09-09 — Applying or removing state (hang/open/close/take-down curtain) is a **right-click menu action**, gated on having the item anywhere in inventory — matching how bars and crafting already work — not a held-item interaction. Chosen for consistency and because it needed zero new interaction-dispatch code.
+- 2026-09-09 — Confirmed by an extended dig-and-build session (screenshot: a proper underground base, ladders, a dug room): the Minecraft-style digging/placing loop is the most fun part of the game and is not on the table for removal. Reinforces the medieval-reconfirmed reasoning from 2026-09-08 — this is exactly the identity that doesn't survive a modern-suburb setting.
