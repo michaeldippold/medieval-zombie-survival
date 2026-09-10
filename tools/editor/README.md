@@ -49,7 +49,8 @@ in-game.
 
 - Starts seeded with the current 15 game tiles (flat colours, matching `src/config.js`
   `COLORS`) plus blank canvases for things DESIGN has specced but no code touches yet:
-  background walls (`bg_plaster`, `bg_earth`, `bg_plank`, `bg_stone`, `bg_window`), the first
+  background walls (`bg_plaster`, `bg_earth`, `bg_plank`, `bg_stone`), `glass` (a window is
+  glass in a wall, DESIGN §5.4b — not a background), the first
   furniture (`chest`, `bed`, `fireplace`, `well`, `workbench`), and two-tall character
   sprites (`player`, `zombie`). Rename, delete, or add to this freely — it's a starting point,
   not a fixed list.

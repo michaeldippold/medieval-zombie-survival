@@ -19,7 +19,7 @@ something → go out again.
 
 **The one mechanic everything hangs on**: *enclosure*. You are either sealed or exposed. Sealed
 means nothing can see you and you can see nothing. Exposed means you can see out and they can
-see in. Every wall, door, shutter, bar and trapdoor exists to move that boolean, and every
+see in. Every wall, door, window, curtain, bar and trapdoor exists to move that boolean, and every
 zombie behaviour is a consequence of it.
 
 ### 1.1 What 1.0 is (decided 2026-09-08)
@@ -126,7 +126,8 @@ Why medieval (decided, not up for relitigation without new information):
   UI toolkit in games; use it.
 - **No physics engine.** AABB, resolve X then Y, hand-rolled. Everything "physical" in this
   game is HP + collision + timers.
-- **Fixed logical resolution** 960×560 (24×14 tiles), scaled by CSS. Camera scrolls in both axes.
+- **Fixed logical resolution** 1280×720 (40×22.5 tiles; was 960×560 until the two-tall
+  change, §6.1), scaled by CSS. Camera scrolls in both axes.
 - **Frame loop**: `requestAnimationFrame`, `dt` clamped to 1/30 s. Simulation is dt-based, not
   fixed-step; if determinism is ever needed (replays, multiplayer) switch to a fixed
   accumulator — the systems are written to allow it.
@@ -143,7 +144,7 @@ Why medieval (decided, not up for relitigation without new information):
 ### 5.1 Tile grid
 
 The world is a 2D array `grid[row][col]` of tile objects or `null` (air). Tile size is
-**40 px** today and becomes **32 px** (16 px art at 2×) in the scale phase (§6). The current
+**32 px** (16 px art at 2×; was 40 until the scale change of 2026-09-08, §6.1). The current
 world is 120×40; the first real world will be a few hundred columns wide with sky above the
 mountains and bedrock at the bottom (§5.6).
 
@@ -245,8 +246,9 @@ craft it into `wall_stone`, already a proper attackable structure) gets finite h
 checked via the instance (`t.hp`), not the kind's default. Natural dirt — including the walls
 of a pit you dug, or the earth around an underground base — is never touched by this and stays
 permanently un-attackable; only a block that came from the hotbar is flimsy. `placedHp: 40` is
-deliberately weaker than even a shutter (60), so a raw-dirt barricade reads as "a stopgap," not
-"a wall" — real fortification still means crafting one.
+deliberately no stronger than a pane of glass (40) and far below a timber wall (300), so a
+raw-dirt barricade reads as "a stopgap," not "a wall" — real fortification still means
+crafting one.
 
 **Wood yield**: a trunk tile fells 1:1 into a `log` (placeable straight back as decoration — a
 bark block for background variety, never a wall). Crafting turns 1 log into 4 **planks**, and
@@ -270,7 +272,7 @@ One state machine for both:
 ```
 state ∈ { closed(hp), open, broken }     bars ∈ 0..2, each with its own barHp
 solid  = bars > 0 || (closed && !broken)
-opaque = solid
+opaque = solid || bars > 0        (see §9 — opaque no longer aliases solid in general)
 ```
 
 - **Open/close** from either side, if nothing is standing in the tile.
@@ -341,17 +343,20 @@ the code had to know. State on the glass needs neither.
   can't (not empty, blocked by a body, too far, none left). Each left click stamps one and
   takes one from the stack. Selecting another slot is the exit; there is no build mode — the
   held item *is* the mode. Raw blocks (dirt, leaves, logs) are placeable straight off the
-  ground or a felled tree; structures (walls, floors, ladders, doors, shutters, trapdoors) are
-  crafted from planks or stone first (§7.3). Doors and shutters take their "inside" from the
+  ground or a felled tree; structures (walls, floors, ladders, doors, trapdoors) are crafted
+  from planks or stone first (§7.3); glass is found, not crafted, until there's a furnace
+  (§5.4b). Doors take their "inside" from the
   side the player stood
   on. Placed tiles inherit the air tile's `back`.
 - **Dismantling** is harvesting a built tile with the matching tool. It drops the *item*
   (a door drops a door), so anything you built can be moved. A tile a zombie breaks drops
   nothing — losing it and taking it down are different.
-- **Reach**: 110 px from the player's centre to the tile's centre, for everything.
+- **Reach**: 88 px (2.75 tiles) from the player's centre to the tile's centre, for everything.
 - Bedrock cannot be dug. The world edges are invisible solid walls.
-- **Tunnels are one tile tall.** The player is 36 px in a 40 px tile. This is a deliberate
-  constraint: tunnels are tight and you cannot fight in one.
+- **Horizontal tunnels are two tiles tall; vertical shafts are one wide.** The player is 28×60
+  in a 32 px tile (§6.1). Digging sideways costs double what it did at one-tall; dropping a
+  one-wide shaft straight down is still the cheap move, and the one that feels best (confirmed
+  in play, 2026-09-08). Tunnels are tight and you cannot fight in one.
 - Zombies cannot dig. Earth is the strongest wall in the game. Its counterweight is need
   (§7.4): you have to come up.
 
@@ -434,7 +439,7 @@ Nothing in the runtime may assume a particular layout.
   ```
 
   The legend is generated from whatever kinds the rectangle contains. Tile state that matters
-  is kept (a door's inside direction, a shutter's open/closed, a chest's literal contents —
+  is kept (a door's inside direction, a curtain's open/closed, a chest's literal contents —
   "the hut has an axe in the chest" is you putting an axe in the chest); damage is not.
   Multi-cell things export as their anchor only.
 
@@ -564,14 +569,16 @@ save rule, but `tickers`/`lights` are caches rebuilt on load, not saved.
   Resolving Y downward sets `onGround`. This ordering is what prevents corner snags.
 - Solids for a body = solid tiles in the body's neighbourhood + other bodies as the rules
   allow (see zombies §8.5 for who collides with whom).
-- Gravity 1800 px/s², terminal 1000. Player run 260, jump −640 with an early-release cut to
-  −220. These numbers are *tuned*; do not change them without playing.
+- Gravity 1440 px/s², terminal 800. Player run 208, jump −512 with an early-release cut to
+  −176. These are the pre-scale-change numbers (1800 / 1000 / 260 / −640 / −220) × 0.8, so
+  the feel in *tile* terms is unchanged — jump height is still ~2.8 tiles. They are *tuned*;
+  do not change them without playing.
 - **Ladders**: a body whose centre column overlaps a climbable tile is "on a ladder".
   Player: W climbs at 180, S drops at 180, neither slides at 70 (Minecraft rule), Space
   jumps off (with a 0.3 s grace so the ladder rule doesn't cancel the jump).
 - **Step climbing** (`tryClimb`): a body blocked horizontally whose obstacle is one tile with
   a passable tile above it is lifted into that tile and continues. This single rule is how
-  zombies mount sills, climb through open shutters, and step off ladders onto floors.
+  zombies mount sills, walk through open doors, and step off ladders onto floors.
 - **Fall damage** (planned with mountains, §5.6): landing with `vy` above a threshold (~ a
   4-tile drop) costs HP scaling with the excess, capped well short of lethal from any height
   you can actually reach; never infects (it's not a bite). Ladders and water (if ever) reset
@@ -703,12 +710,14 @@ durability. The offhand is the pattern; armour is copies of it.
 ## 8. Zombies
 
 ### 8.1 Stats
-30×30 body. Speed 55–125 (individual), ×1.3 when it can see you. HP 3. Touch damage 20.
-Cannot dig, cannot open portals, cannot jump except the one-tile step climb.
+28×60 body — two tiles tall, same as the player (§6.1). Speed 44–100 (individual), ×1.3 when
+it can see you. HP 3. Touch damage 20. Cannot dig, cannot open portals, cannot jump except the
+one-tile step climb (and the slow two-tile scramble, §8.4b).
 
 ### 8.2 Senses
 - **Sight** is the enclosure model (§9): a zombie sees the player iff the zombie's tile is in
-  the player's visible set *and* it is within 380 px horizontally and 260 px vertically.
+  the player's visible set *and* it is within 304 px horizontally and 208 px vertically
+  (9.5 × 6.5 tiles).
   Symmetric by construction — no separate zombie-side computation.
 - **Attention**: while any zombie sees the player, a shared attention point is set to the
   player's position and lingers 5 s after the last sighting. Wanderers within 900 px of it
@@ -1017,7 +1026,11 @@ right after stateful tiles (§5.8) and every later phase keeps it green. Rules f
 
 ```
 index.html                 page shell, CSS tokens, canvas + DOM UI mounts
-devserver.mjs               local dev server (sends Cache-Control: no-store — see §17 note)
+devserver.mjs               local dev server (Cache-Control: no-store — see §17 note); also
+                              POST /assets, which the editor's Save button writes through
+tools/editor/               the pixel-art asset editor (index.html/app.js/style.css/README)
+assets/manifest.json        hand-drawn art, written by the editor, read at boot (untracked
+                              until something real is drawn; absent = flat painters everywhere)
 src/main.js                 bootstrap + RAF loop; calls validateContent() before anything else
 src/validate.js              boot-time checks over TILE_DEFS/ITEMS/CRAFTS; throws with every
                               problem found, not just the first
@@ -1028,7 +1041,8 @@ src/physics.js                overlap, moveBody, sectorHits, rayBox, onClimbable
 src/items.js                  ITEMS, STARTER_LOADOUT, CRAFTS — the whole item vocabulary, data only
 src/inventory.js              slots array: createStartInventory, give/take/swap, heldId, count
 src/world/tiles.js            tile definitions, makeTile, isSolid/isOpaque/isClimbable/isPortal,
-                               canZombieDamage, damageTile, harvestTile, airAfter, integrity
+                               canZombieDamage, damageTile, harvestTile, airAfter, integrity;
+                               stampMulti/footprintCells for anchor+part multi-cell tiles (§5.8)
 src/world/world.js            World: grid, get/set, tileAtPx, solidsNear, allSolidRects, surface, version
 src/world/maps.js             seeded starter world generator
 src/world/vision.js           computeVision → { visible, exposed }
@@ -1045,9 +1059,11 @@ src/ui/palette.js              generic thumbnail-grid palette (used for Craft)
 src/ui/inventoryPanel.js       the inventory window; drag-to-swap
 src/ui/hud.js                  canvas HUD: health, enclosure label, hotbar, ghost/hint banners
 src/render/renderer.js         camera, layer order, culling, calls painters
-src/render/tiles.js            paintTile + the default plain-block painter
+src/render/assets.js           loads assets/manifest.json at boot; spriteFor(kind) or null
+src/render/tiles.js            paintTile (sprite if drawn, else painter, else plain block); a
+                                multi-cell anchor draws its whole footprint, a part draws nothing
 src/render/sprites.js          drawWeapon, player/zombie boxes, swing arc, arrows
-src/render/icons.js            40×40 item icons for the hotbar/inventory (placeables reuse paintTile)
+src/render/icons.js            TILE×TILE item icons for the hotbar/inventory (placeables reuse paintTile)
 ```
 
 **State** is one plain object owned by `game.js`: `{ world, player, zombies, drops, arrows,
